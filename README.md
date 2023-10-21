@@ -161,7 +161,17 @@ API-->>WebApp: Returns success
 Deactivate API
 ```
 
-### Authentication
+### Update match
+
+#### Update match teams
+
+TODO
+
+#### Update match time
+
+TODO
+
+### Authorization
 
 `prognoz-api` => `result-service`
 1) A secret key is generated, hashed and set to env variables
@@ -187,26 +197,15 @@ Deactivate API
 
 ### Service initialization
 - get unfinished jobs and reschedule them
-- ~~gets season and timezone from football-api~~
-- get token from prognoz-api
 
 cron packages list:
 [chrono](https://github.com/procyon-projects/chrono)
 https://github.com/gocraft/work
 https://github.com/hibiken/asynq
 
-Open questions:
-1) Do we need persistent storage in `result-service`?   
-Yes, because we need to keep scheduled jobs after service restart.
-
-2) Where to keep football-api data: in API or in result-service?  
-In result service. Prognoz-API should not have a logic related to result-service. 
-
-3) Can we get a fixture and create a scheduled job in one request?  
-???
+### Open questions
 
 4) What should be fulfilled during result-service initialization?   
-- token retrieval from prognoz-api
-- football api healthcheck
+- football api healthcheck? (TODO: do they even have healthcheck)
 
 
