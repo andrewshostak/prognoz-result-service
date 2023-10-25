@@ -8,6 +8,11 @@ type Server struct {
 	FootballAPITimezone string   `env:"FOOTBALL_API_TIMEZONE" envDefault:"Europe/Kiev"`
 	HashedAPIKeys       []string `env:"HASHED_API_KEYS" envSeparator:","`
 	SecretKey           string   `env:"SECRET_KEY,required"`
+	PGHost              string   `env:"PG_HOST" envDefault:"localhost"`
+	PGUser              string   `env:"PG_USER" envDefault:"postgres"`
+	PGPassword          string   `env:"PG_PASSWORD,required"`
+	PGPort              string   `env:"PG_PORT" envDefault:"5432"`
+	PGDatabase          string   `env:"PG_DATABASE" envDefault:"postgres"`
 }
 
 func Parse() Server {
