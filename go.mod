@@ -1,4 +1,4 @@
-module github.com/andrewshostak/prognoz-result-service
+module github.com/andrewshostak/result-service
 
 go 1.19
 
