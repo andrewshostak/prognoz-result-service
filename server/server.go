@@ -6,6 +6,8 @@ import (
 	"github.com/andrewshostak/result-service/config"
 	"github.com/andrewshostak/result-service/handler"
 	"github.com/andrewshostak/result-service/middleware"
+	"github.com/andrewshostak/result-service/repository"
+	"github.com/andrewshostak/result-service/service"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	migratepg "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -19,13 +21,17 @@ func StartServer() {
 
 	r := gin.Default()
 
-	_ = establishDatabaseConnection(cfg)
+	db := establishDatabaseConnection(cfg)
 
 	r.Use(middleware.Authorization(cfg.HashedAPIKeys, cfg.SecretKey))
 
 	v1 := r.Group("/v1")
 
-	matchHandler := handler.NewMatchHandler()
+	aliasRepository := repository.NewAliasRepository(db)
+
+	matchService := service.NewMatchService(aliasRepository)
+
+	matchHandler := handler.NewMatchHandler(matchService)
 	subscriptionHandler := handler.NewSubscriptionHandler()
 	v1.POST("/matches", matchHandler.Create)
 	v1.POST("/subscriptions", subscriptionHandler.Create)
