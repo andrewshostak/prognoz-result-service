@@ -1,7 +1,18 @@
 package repository
 
 type Alias struct {
-	Id     uint   `gorm:"column:id;primaryKey"`
-	TeamId uint   `gorm:"column:team_id"`
+	ID     uint   `gorm:"column:id;primaryKey"`
+	TeamID uint   `gorm:"column:team_id"`
 	Alias  string `gorm:"column:alias;unique"`
+
+	FootballApiTeam *FootballApiTeam `gorm:"foreignKey:team_id"`
+}
+
+type Team struct {
+	ID uint `gorm:"column:id;primaryKey"`
+}
+
+type FootballApiTeam struct {
+	ID     uint `gorm:"column:id;primaryKey"`
+	TeamID uint `gorm:"column:team_id"`
 }
