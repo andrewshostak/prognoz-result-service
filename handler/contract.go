@@ -7,5 +7,5 @@ import (
 )
 
 type MatchService interface {
-	Create(ctx context.Context, request service.CreateMatchRequest) (string, error)
+	Create(ctx context.Context, request service.CreateMatchRequest) (uint, error)
 }

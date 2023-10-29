@@ -28,8 +28,9 @@ func StartServer() {
 	v1 := r.Group("/v1")
 
 	aliasRepository := repository.NewAliasRepository(db)
+	matchRepository := repository.NewMatchRepository(db)
 
-	matchService := service.NewMatchService(aliasRepository)
+	matchService := service.NewMatchService(aliasRepository, matchRepository)
 
 	matchHandler := handler.NewMatchHandler(matchService)
 	subscriptionHandler := handler.NewSubscriptionHandler()
