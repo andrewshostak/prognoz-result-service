@@ -10,12 +10,17 @@ import (
 )
 
 type MatchService struct {
-	aliasRepository AliasRepository
-	matchRepository MatchRepository
+	aliasRepository   AliasRepository
+	matchRepository   MatchRepository
+	footballAPIClient FootballAPIClient
 }
 
-func NewMatchService(aliasRepository AliasRepository, matchRepository MatchRepository) *MatchService {
-	return &MatchService{aliasRepository: aliasRepository, matchRepository: matchRepository}
+func NewMatchService(aliasRepository AliasRepository, matchRepository MatchRepository, footballAPIClient FootballAPIClient) *MatchService {
+	return &MatchService{
+		aliasRepository:   aliasRepository,
+		matchRepository:   matchRepository,
+		footballAPIClient: footballAPIClient,
+	}
 }
 
 func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (uint, error) {

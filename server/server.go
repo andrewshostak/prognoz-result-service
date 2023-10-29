@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 
+	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/config"
 	"github.com/andrewshostak/result-service/handler"
 	"github.com/andrewshostak/result-service/middleware"
@@ -27,10 +28,12 @@ func StartServer() {
 
 	v1 := r.Group("/v1")
 
+	footballAPIClient := client.NewFootballAPIClient(cfg.RapidAPIKey, cfg.FootballAPITimezone)
+
 	aliasRepository := repository.NewAliasRepository(db)
 	matchRepository := repository.NewMatchRepository(db)
 
-	matchService := service.NewMatchService(aliasRepository, matchRepository)
+	matchService := service.NewMatchService(aliasRepository, matchRepository, footballAPIClient)
 
 	matchHandler := handler.NewMatchHandler(matchService)
 	subscriptionHandler := handler.NewSubscriptionHandler()
