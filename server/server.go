@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/config"
@@ -23,17 +24,18 @@ func StartServer() {
 	r := gin.Default()
 
 	db := establishDatabaseConnection(cfg)
+	httpClient := http.Client{}
 
 	r.Use(middleware.Authorization(cfg.HashedAPIKeys, cfg.SecretKey))
 
 	v1 := r.Group("/v1")
 
-	footballAPIClient := client.NewFootballAPIClient(cfg.RapidAPIKey, cfg.FootballAPITimezone)
+	footballAPIClient := client.NewFootballAPIClient(&httpClient, cfg.FootballAPIBaseURL, cfg.RapidAPIKey)
 
 	aliasRepository := repository.NewAliasRepository(db)
 	matchRepository := repository.NewMatchRepository(db)
 
-	matchService := service.NewMatchService(aliasRepository, matchRepository, footballAPIClient)
+	matchService := service.NewMatchService(aliasRepository, matchRepository, footballAPIClient, cfg.Location())
 
 	matchHandler := handler.NewMatchHandler(matchService)
 	subscriptionHandler := handler.NewSubscriptionHandler()

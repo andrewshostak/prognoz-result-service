@@ -42,7 +42,8 @@ type Status struct {
 }
 
 type FixtureSearch struct {
-	Season uint
-	Date   *string
-	TeamID *string
+	Season   uint
+	Timezone string
+	Date     *string
+	TeamID   *uint
 }

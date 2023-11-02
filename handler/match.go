@@ -31,6 +31,12 @@ func (h *MatchHandler) Create(c *gin.Context) {
 		return
 	}
 
+	if errors.As(err, &errs.UnexpectedNumberOfItemsError{}) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+		return
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 
