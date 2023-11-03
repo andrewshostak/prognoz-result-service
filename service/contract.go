@@ -12,6 +12,7 @@ type AliasRepository interface {
 }
 
 type MatchRepository interface {
+	Create(ctx context.Context, match repository.Match) (*repository.Match, error)
 	Search(ctx context.Context, search repository.Match) (*repository.Match, error)
 }
 

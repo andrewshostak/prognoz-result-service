@@ -78,11 +78,28 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		return 0, errs.UnexpectedNumberOfItemsError{Message: fmt.Sprintf("fixture starting at %s with team id %d is not found", date, aliasHome.FootballApiTeam.ID)}
 	}
 
-	if response.Response[0].Fixture.Status.Short != stateNotStarted {
-		return 0, fmt.Errorf("%s: %w", fmt.Sprintf("status of the fixture with id %d is not %s", response.Response[0].Fixture.ID, stateNotStarted), errs.ErrIncorrectFixtureStatus)
+	fixture := response.Response[0]
+
+	if fixture.Fixture.Status.Short != stateNotStarted {
+		return 0, fmt.Errorf("%s: %w", fmt.Sprintf("status of the fixture with id %d is not %s", fixture.Fixture.ID, stateNotStarted), errs.ErrIncorrectFixtureStatus)
 	}
 
-	return response.Response[0].Fixture.ID, nil
+	startsAt, err := time.Parse(time.RFC3339, fixture.Fixture.Date)
+	if err != nil {
+		return 0, fmt.Errorf("unable to parse date %s: %w", fixture.Fixture.Date, err)
+	}
+
+	toCreate := repository.Match{
+		HomeTeamID: aliasHome.TeamID,
+		AwayTeamID: aliasAway.TeamID,
+		StartsAt:   startsAt,
+	}
+	created, err := s.matchRepository.Create(ctx, toCreate)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create match with team ids %d and %d starting at %s: %w", aliasHome.TeamID, aliasAway.TeamID, startsAt, err)
+	}
+
+	return created.ID, nil
 }
 
 // getSeason returns current year if current time is after June 1, otherwise previous year

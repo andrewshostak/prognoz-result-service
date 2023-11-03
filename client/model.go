@@ -14,6 +14,7 @@ type Result struct {
 type Fixture struct {
 	ID     uint   `json:"id"`
 	Status Status `json:"status"`
+	Date   string `json:"date"`
 }
 
 type Teams struct {

@@ -16,6 +16,15 @@ func NewMatchRepository(db *gorm.DB) *MatchRepository {
 	return &MatchRepository{db: db}
 }
 
+func (r *MatchRepository) Create(ctx context.Context, match Match) (*Match, error) {
+	result := r.db.WithContext(ctx).Create(&match)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return &match, nil
+}
+
 func (r *MatchRepository) Search(ctx context.Context, search Match) (*Match, error) {
 	var match Match
 
