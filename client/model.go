@@ -33,7 +33,6 @@ type Goals struct {
 }
 
 type Score struct {
-	Halftime  Goals `json:"halftime"`
 	Fulltime  Goals `json:"fulltime"`
 	Extratime Goals `json:"extratime"`
 }

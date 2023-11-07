@@ -13,7 +13,11 @@ type AliasRepository interface {
 
 type MatchRepository interface {
 	Create(ctx context.Context, match repository.Match) (*repository.Match, error)
-	Search(ctx context.Context, search repository.Match) (*repository.Match, error)
+	One(ctx context.Context, search repository.Match) (*repository.Match, error)
+}
+
+type FootballAPIFixtureRepository interface {
+	Create(ctx context.Context, fixture repository.FootballApiFixture) (*repository.FootballApiFixture, error)
 }
 
 type FootballAPIClient interface {

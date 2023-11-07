@@ -25,7 +25,7 @@ func (r *MatchRepository) Create(ctx context.Context, match Match) (*Match, erro
 	return &match, nil
 }
 
-func (r *MatchRepository) Search(ctx context.Context, search Match) (*Match, error) {
+func (r *MatchRepository) One(ctx context.Context, search Match) (*Match, error) {
 	var match Match
 
 	result := r.db.WithContext(ctx).

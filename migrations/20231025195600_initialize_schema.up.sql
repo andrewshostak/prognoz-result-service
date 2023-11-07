@@ -41,7 +41,7 @@ create table if not exists football_api_fixtures
 (
     id bigserial primary key,
     match_id bigserial,
-    data json,
+    data jsonb not null,
     foreign key (match_id) references matches (id) on update cascade on delete restrict
 );
 

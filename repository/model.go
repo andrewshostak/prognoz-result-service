@@ -1,6 +1,10 @@
 package repository
 
-import "time"
+import (
+	"time"
+
+	"github.com/jackc/pgtype"
+)
 
 type Alias struct {
 	ID     uint   `gorm:"column:id;primaryKey"`
@@ -24,4 +28,12 @@ type Match struct {
 	HomeTeamID uint      `gorm:"column:home_team_id"`
 	AwayTeamID uint      `gorm:"column:away_team_id"`
 	StartsAt   time.Time `gorm:"column:starts_at"`
+}
+
+type FootballApiFixture struct {
+	ID      uint         `gorm:"column:id;primaryKey"`
+	MatchID uint         `gorm:"column:match_id"`
+	Data    pgtype.JSONB `gorm:"column:data"`
+
+	Match *Match `gorm:"foreignKey:match_id"`
 }
