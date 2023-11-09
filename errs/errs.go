@@ -30,3 +30,19 @@ type UnexpectedNumberOfItemsError struct {
 func (e UnexpectedNumberOfItemsError) Error() string {
 	return e.Message
 }
+
+type SubscriptionAlreadyExistsError struct {
+	Message string
+}
+
+func (e SubscriptionAlreadyExistsError) Error() string {
+	return e.Message
+}
+
+type WrongMatchIDError struct {
+	Message string
+}
+
+func (e WrongMatchIDError) Error() string {
+	return e.Message
+}

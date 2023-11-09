@@ -23,3 +23,7 @@ type FootballAPIFixtureRepository interface {
 type FootballAPIClient interface {
 	SearchFixtures(ctx context.Context, search client.FixtureSearch) (*client.FixturesResponse, error)
 }
+
+type SubscriptionRepository interface {
+	Create(ctx context.Context, subscription repository.Subscription) (*repository.Subscription, error)
+}

@@ -13,7 +13,7 @@ type CreateMatchRequest struct {
 }
 
 type CreateSubscriptionRequest struct {
-	MatchID   string `binding:"required" json:"match_id"`
+	MatchID   uint   `binding:"required" json:"match_id"`
 	URL       string `binding:"required" json:"url"`
 	SecretKey string `binding:"required" json:"secret_key"`
 }
@@ -23,5 +23,13 @@ func (cmr *CreateMatchRequest) ToDomain() service.CreateMatchRequest {
 		StartsAt:  cmr.StartsAt,
 		AliasHome: cmr.AliasHome,
 		AliasAway: cmr.AliasAway,
+	}
+}
+
+func (csr *CreateSubscriptionRequest) ToDomain() service.CreateSubscriptionRequest {
+	return service.CreateSubscriptionRequest{
+		MatchID:   csr.MatchID,
+		URL:       csr.URL,
+		SecretKey: csr.SecretKey,
 	}
 }

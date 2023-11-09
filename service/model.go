@@ -7,3 +7,9 @@ type CreateMatchRequest struct {
 	AliasHome string
 	AliasAway string
 }
+
+type CreateSubscriptionRequest struct {
+	MatchID   uint
+	URL       string
+	SecretKey string
+}

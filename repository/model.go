@@ -37,3 +37,12 @@ type FootballApiFixture struct {
 
 	Match *Match `gorm:"foreignKey:match_id"`
 }
+
+type Subscription struct {
+	ID         uint       `gorm:"column:id;primaryKey"`
+	Url        string     `gorm:"column:url;unique"`
+	MatchID    uint       `gorm:"column:match_id"`
+	Key        string     `gorm:"column:key;unique"`
+	CreatedAt  time.Time  `gorm:"column:created_at"`
+	NotifiedAt *time.Time `gorm:"column:notified_at"`
+}

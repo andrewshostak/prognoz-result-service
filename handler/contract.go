@@ -9,3 +9,7 @@ import (
 type MatchService interface {
 	Create(ctx context.Context, request service.CreateMatchRequest) (uint, error)
 }
+
+type SubscriptionService interface {
+	Create(ctx context.Context, request service.CreateSubscriptionRequest) error
+}

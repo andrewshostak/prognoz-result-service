@@ -35,6 +35,7 @@ func StartServer() {
 	aliasRepository := repository.NewAliasRepository(db)
 	matchRepository := repository.NewMatchRepository(db)
 	footballAPIFixtureRepository := repository.NewFootballAPIFixtureRepository(db)
+	subscriptionRepository := repository.NewSubscriptionRepository(db)
 
 	matchService := service.NewMatchService(
 		aliasRepository,
@@ -43,9 +44,10 @@ func StartServer() {
 		footballAPIClient,
 		cfg.Location(),
 	)
+	subscriptionService := service.NewSubscriptionService(subscriptionRepository)
 
 	matchHandler := handler.NewMatchHandler(matchService)
-	subscriptionHandler := handler.NewSubscriptionHandler()
+	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
 	v1.POST("/matches", matchHandler.Create)
 	v1.POST("/subscriptions", subscriptionHandler.Create)
 
