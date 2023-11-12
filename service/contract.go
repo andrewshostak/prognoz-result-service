@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/repository"
+	"github.com/procyon-projects/chrono"
 )
 
 type AliasRepository interface {
@@ -26,4 +28,9 @@ type FootballAPIClient interface {
 
 type SubscriptionRepository interface {
 	Create(ctx context.Context, subscription repository.Subscription) (*repository.Subscription, error)
+}
+
+type TaskScheduler interface {
+	Schedule(task func(ctx context.Context), period time.Duration, startTime time.Time) (*chrono.ScheduledRunnableTask, error)
+	Cancel(scheduledTask *chrono.ScheduledRunnableTask)
 }

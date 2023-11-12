@@ -9,11 +9,13 @@ import (
 	"github.com/andrewshostak/result-service/handler"
 	"github.com/andrewshostak/result-service/middleware"
 	"github.com/andrewshostak/result-service/repository"
+	"github.com/andrewshostak/result-service/scheduler"
 	"github.com/andrewshostak/result-service/service"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	migratepg "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/procyon-projects/chrono"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -25,6 +27,7 @@ func StartServer() {
 
 	db := establishDatabaseConnection(cfg)
 	httpClient := http.Client{}
+	chronoTaskScheduler := chrono.NewDefaultTaskScheduler()
 
 	r.Use(middleware.Authorization(cfg.HashedAPIKeys, cfg.SecretKey))
 
@@ -36,6 +39,8 @@ func StartServer() {
 	matchRepository := repository.NewMatchRepository(db)
 	footballAPIFixtureRepository := repository.NewFootballAPIFixtureRepository(db)
 	subscriptionRepository := repository.NewSubscriptionRepository(db)
+
+	_ = scheduler.NewTaskScheduler(chronoTaskScheduler)
 
 	matchService := service.NewMatchService(
 		aliasRepository,
