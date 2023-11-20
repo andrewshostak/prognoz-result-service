@@ -6,5 +6,6 @@ drop table if exists aliases;
 drop table if exists matches;
 drop table if exists football_api_teams;
 drop table if exists teams;
+drop type result_status;
 
 commit;

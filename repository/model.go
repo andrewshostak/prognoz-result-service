@@ -3,6 +3,7 @@ package repository
 import (
 	"time"
 
+	"database/sql/driver"
 	"github.com/jackc/pgtype"
 )
 
@@ -24,10 +25,11 @@ type FootballApiTeam struct {
 }
 
 type Match struct {
-	ID         uint      `gorm:"column:id;primaryKey"`
-	HomeTeamID uint      `gorm:"column:home_team_id"`
-	AwayTeamID uint      `gorm:"column:away_team_id"`
-	StartsAt   time.Time `gorm:"column:starts_at"`
+	ID           uint         `gorm:"column:id;primaryKey"`
+	HomeTeamID   uint         `gorm:"column:home_team_id"`
+	AwayTeamID   uint         `gorm:"column:away_team_id"`
+	StartsAt     time.Time    `gorm:"column:starts_at"`
+	ResultStatus ResultStatus `gorm:"column:result_status;type:result_status"`
 }
 
 type FootballApiFixture struct {
@@ -45,4 +47,22 @@ type Subscription struct {
 	Key        string     `gorm:"column:key;unique"`
 	CreatedAt  time.Time  `gorm:"column:created_at"`
 	NotifiedAt *time.Time `gorm:"column:notified_at"`
+}
+
+type ResultStatus string
+
+const (
+	NotScheduled ResultStatus = "not_scheduled"
+	Scheduled    ResultStatus = "scheduled"
+	Error        ResultStatus = "error"
+	Successful   ResultStatus = "successful"
+)
+
+func (rs *ResultStatus) Scan(value interface{}) error {
+	*rs = ResultStatus(value.([]byte))
+	return nil
+}
+
+func (rs ResultStatus) Value() (driver.Value, error) {
+	return string(rs), nil
 }
