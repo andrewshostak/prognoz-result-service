@@ -39,6 +39,7 @@ type Score struct {
 
 type Status struct {
 	Short string `json:"short"`
+	Long  string `json:"long"`
 }
 
 type FixtureSearch struct {
@@ -46,4 +47,5 @@ type FixtureSearch struct {
 	Timezone string
 	Date     *string
 	TeamID   *uint
+	ID       *uint
 }

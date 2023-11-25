@@ -29,7 +29,7 @@ type Match struct {
 	HomeTeamID   uint         `gorm:"column:home_team_id"`
 	AwayTeamID   uint         `gorm:"column:away_team_id"`
 	StartsAt     time.Time    `gorm:"column:starts_at"`
-	ResultStatus ResultStatus `gorm:"column:result_status;type:result_status"`
+	ResultStatus ResultStatus `gorm:"column:result_status;type:result_status;default:not_scheduled"`
 }
 
 type FootballApiFixture struct {

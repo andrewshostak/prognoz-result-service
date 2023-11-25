@@ -6,6 +6,7 @@ import (
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/repository"
+	"github.com/jackc/pgtype"
 	"github.com/procyon-projects/chrono"
 )
 
@@ -16,10 +17,12 @@ type AliasRepository interface {
 type MatchRepository interface {
 	Create(ctx context.Context, match repository.Match) (*repository.Match, error)
 	One(ctx context.Context, search repository.Match) (*repository.Match, error)
+	Update(ctx context.Context, id uint, resultStatus repository.ResultStatus) (*repository.Match, error)
 }
 
 type FootballAPIFixtureRepository interface {
 	Create(ctx context.Context, fixture repository.FootballApiFixture) (*repository.FootballApiFixture, error)
+	Update(ctx context.Context, id uint, data pgtype.JSONB) (*repository.FootballApiFixture, error)
 }
 
 type FootballAPIClient interface {

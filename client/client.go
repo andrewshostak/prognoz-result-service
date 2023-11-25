@@ -43,6 +43,10 @@ func (c *FootballAPIClient) SearchFixtures(ctx context.Context, search FixtureSe
 		q.Add("date", *search.Date)
 	}
 
+	if search.ID != nil {
+		q.Add("id", strconv.Itoa(int(*search.ID)))
+	}
+
 	req.URL.RawQuery = q.Encode()
 
 	req.Header.Set(authHeader, c.apiKey)

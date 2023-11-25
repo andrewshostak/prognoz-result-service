@@ -134,8 +134,8 @@ Deactivate API
 - if the fixture status is not `FT`, `result-service` will send more requests to `football-api`, until receives the `FT` status.
 - the interval between calls to `football-api` is 15 minutes.
 - max number of retries is 5.
-2) `result-service` updates the fixture in the DB after each call to `football-api`.
-3) when `result-service` receives ended match it cancels scheduled task
+2) when `result-service` receives ended match it cancels scheduled task and updates fixture/match in the DB
+3) when max number of retries reached it updates match status in the DB to `error`
 
 ```mermaid
 sequenceDiagram
@@ -237,4 +237,6 @@ https://github.com/hibiken/asynq
 - get two aliases on match creation endpoint concurrently
 - create match and football api fixture in transaction
 - fix broken gorm errors checks
+- replace fmt.Printf with good logger
+- update football api fixture and match in transaction
 

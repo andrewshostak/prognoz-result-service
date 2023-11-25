@@ -40,13 +40,14 @@ func StartServer() {
 	footballAPIFixtureRepository := repository.NewFootballAPIFixtureRepository(db)
 	subscriptionRepository := repository.NewSubscriptionRepository(db)
 
-	_ = scheduler.NewTaskScheduler(chronoTaskScheduler)
+	taskScheduler := scheduler.NewTaskScheduler(chronoTaskScheduler)
 
 	matchService := service.NewMatchService(
 		aliasRepository,
 		matchRepository,
 		footballAPIFixtureRepository,
 		footballAPIClient,
+		taskScheduler,
 		cfg.Location(),
 	)
 	subscriptionService := service.NewSubscriptionService(subscriptionRepository)

@@ -43,3 +43,13 @@ func (r *MatchRepository) One(ctx context.Context, search Match) (*Match, error)
 
 	return &match, nil
 }
+
+func (r *MatchRepository) Update(ctx context.Context, id uint, resultStatus ResultStatus) (*Match, error) {
+	match := Match{ID: id}
+	result := r.db.WithContext(ctx).Model(&match).Updates(Match{ResultStatus: resultStatus})
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return &match, nil
+}
