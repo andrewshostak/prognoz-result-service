@@ -22,20 +22,37 @@ type CreateSubscriptionRequest struct {
 type Match struct {
 	ID       uint
 	StartsAt time.Time
+
+	FootballApiFixtures []FootballAPIFixture
+	HomeTeam            *Team
+	AwayTeam            *Team
+}
+
+type Team struct {
+	ID uint
+
+	Aliases []Alias
 }
 
 type Alias struct {
-	Alias string
+	Alias  string
+	TeamID uint
+
+	FootballApiTeam *FootballApiTeam
+}
+
+type FootballApiTeam struct {
+	ID     uint
+	TeamID uint
 }
 
 type FootballAPIFixture struct {
-	ID    uint
-	Match Match
+	ID uint
 }
 
 type Result struct {
 	Fixture Fixture
-	Teams   Teams
+	Teams   TeamsExternal
 	Goals   Goals
 	Score   Score
 }
@@ -46,12 +63,12 @@ type Fixture struct {
 	Date   string
 }
 
-type Teams struct {
-	Home Team
-	Away Team
+type TeamsExternal struct {
+	Home TeamExternal
+	Away TeamExternal
 }
 
-type Team struct {
+type TeamExternal struct {
 	ID   uint
 	Name string
 }
@@ -72,8 +89,7 @@ type Status struct {
 
 func fromRepositoryFootballAPIFixture(f repository.FootballApiFixture) FootballAPIFixture {
 	return FootballAPIFixture{
-		ID:    f.ID,
-		Match: fromRepositoryMatch(*f.Match),
+		ID: f.ID,
 	}
 }
 
@@ -86,12 +102,12 @@ func fromClientFootballAPIFixture(c client.Result) Result {
 			},
 			Date: c.Fixture.Date,
 		},
-		Teams: Teams{
-			Home: Team{
+		Teams: TeamsExternal{
+			Home: TeamExternal{
 				ID:   c.Teams.Home.ID,
 				Name: c.Teams.Home.Name,
 			},
-			Away: Team{
+			Away: TeamExternal{
 				ID:   c.Teams.Away.ID,
 				Name: c.Teams.Away.Name,
 			},
@@ -114,14 +130,66 @@ func fromClientFootballAPIFixture(c client.Result) Result {
 }
 
 func fromRepositoryMatch(m repository.Match) Match {
+	fixtures := make([]FootballAPIFixture, 0, len(m.FootballApiFixtures))
+	for _, fixture := range m.FootballApiFixtures {
+		fixtures = append(fixtures, fromRepositoryFootballAPIFixture(fixture))
+	}
+
+	var homeTeam *Team
+	if m.HomeTeam != nil {
+		aliases := make([]Alias, 0, len(m.HomeTeam.Aliases))
+		for _, alias := range m.HomeTeam.Aliases {
+			aliases = append(aliases, Alias{Alias: alias.Alias})
+		}
+
+		homeTeam = &Team{ID: m.HomeTeam.ID, Aliases: aliases}
+	}
+
+	var awayTeam *Team
+	if m.AwayTeam != nil {
+		aliases := make([]Alias, 0, len(m.AwayTeam.Aliases))
+		for _, alias := range m.AwayTeam.Aliases {
+			aliases = append(aliases, Alias{Alias: alias.Alias})
+		}
+
+		awayTeam = &Team{ID: m.AwayTeam.ID, Aliases: aliases}
+	}
 	return Match{
-		ID:       m.ID,
-		StartsAt: m.StartsAt,
+		ID:                  m.ID,
+		StartsAt:            m.StartsAt,
+		FootballApiFixtures: fixtures,
+		HomeTeam:            homeTeam,
+		AwayTeam:            awayTeam,
+	}
+}
+
+func fromRepositoryMatches(m []repository.Match) []Match {
+	matches := make([]Match, 0, len(m))
+	for i := range m {
+		matches = append(matches, fromRepositoryMatch(m[i]))
+	}
+
+	return matches
+}
+
+func fromRepositoryFootballAPITeam(t repository.FootballApiTeam) FootballApiTeam {
+	return FootballApiTeam{
+		ID:     t.ID,
+		TeamID: t.TeamID,
 	}
 }
 
 func fromRepositoryAlias(a repository.Alias) Alias {
+	var footballAPITeam *FootballApiTeam
+
+	if a.FootballApiTeam != nil {
+		mapped := fromRepositoryFootballAPITeam(*a.FootballApiTeam)
+		footballAPITeam = &mapped
+	}
+
 	return Alias{
-		Alias: a.Alias,
+		Alias:           a.Alias,
+		TeamID:          a.TeamID,
+		FootballApiTeam: footballAPITeam,
 	}
 }

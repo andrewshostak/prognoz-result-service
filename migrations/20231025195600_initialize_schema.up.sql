@@ -10,7 +10,7 @@ create table if not exists football_api_teams (
     foreign key (team_id) references teams (id) on update cascade on delete restrict
 );
 
-create type result_status as enum ('not_scheduled', 'scheduled', 'error', 'successful');
+create type result_status as enum ('not_scheduled', 'scheduled', 'scheduling_error', 'error', 'successful');
 
 create table if not exists matches (
     id bigserial primary key,

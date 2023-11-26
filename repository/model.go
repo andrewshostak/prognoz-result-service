@@ -3,7 +3,6 @@ package repository
 import (
 	"time"
 
-	"database/sql/driver"
 	"github.com/jackc/pgtype"
 )
 
@@ -17,6 +16,8 @@ type Alias struct {
 
 type Team struct {
 	ID uint `gorm:"column:id;primaryKey"`
+
+	Aliases []Alias
 }
 
 type FootballApiTeam struct {
@@ -29,7 +30,11 @@ type Match struct {
 	HomeTeamID   uint         `gorm:"column:home_team_id"`
 	AwayTeamID   uint         `gorm:"column:away_team_id"`
 	StartsAt     time.Time    `gorm:"column:starts_at"`
-	ResultStatus ResultStatus `gorm:"column:result_status;type:result_status;default:not_scheduled"`
+	ResultStatus ResultStatus `gorm:"column:result_status;default:not_scheduled"`
+
+	FootballApiFixtures []FootballApiFixture
+	HomeTeam            *Team `gorm:"foreignKey:home_team_id"`
+	AwayTeam            *Team `gorm:"foreignKey:away_team_id"`
 }
 
 type FootballApiFixture struct {
@@ -52,17 +57,9 @@ type Subscription struct {
 type ResultStatus string
 
 const (
-	NotScheduled ResultStatus = "not_scheduled"
-	Scheduled    ResultStatus = "scheduled"
-	Error        ResultStatus = "error"
-	Successful   ResultStatus = "successful"
+	NotScheduled    ResultStatus = "not_scheduled"
+	Scheduled       ResultStatus = "scheduled"
+	SchedulingError ResultStatus = "scheduling_error"
+	Error           ResultStatus = "error"
+	Successful      ResultStatus = "successful"
 )
-
-func (rs *ResultStatus) Scan(value interface{}) error {
-	*rs = ResultStatus(value.([]byte))
-	return nil
-}
-
-func (rs ResultStatus) Value() (driver.Value, error) {
-	return string(rs), nil
-}

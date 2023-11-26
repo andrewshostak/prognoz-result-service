@@ -1,12 +1,14 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/config"
 	"github.com/andrewshostak/result-service/handler"
+	"github.com/andrewshostak/result-service/initializer"
 	"github.com/andrewshostak/result-service/middleware"
 	"github.com/andrewshostak/result-service/repository"
 	"github.com/andrewshostak/result-service/scheduler"
@@ -56,6 +58,12 @@ func StartServer() {
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
 	v1.POST("/matches", matchHandler.Create)
 	v1.POST("/subscriptions", subscriptionHandler.Create)
+
+	ctx := context.Background()
+	matchResultScheduleInitializer := initializer.NewMatchResultScheduleInitializer(matchService)
+	if err := matchResultScheduleInitializer.ReSchedule(ctx); err != nil {
+		panic(err)
+	}
 
 	r.Run(fmt.Sprintf(":%s", cfg.Port))
 }

@@ -50,22 +50,14 @@ func NewMatchService(
 }
 
 func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (uint, error) {
-	aliasHome, err := s.aliasRepository.Find(ctx, request.AliasHome)
+	aliasHome, err := s.findAlias(ctx, request.AliasHome)
 	if err != nil {
 		return 0, fmt.Errorf("failed to find home team alias: %w", err)
 	}
 
-	if aliasHome.FootballApiTeam == nil {
-		return 0, errors.New(fmt.Sprintf("alias %s found, but there is no releated external(football api) team", aliasHome.Alias))
-	}
-
-	aliasAway, err := s.aliasRepository.Find(ctx, request.AliasAway)
+	aliasAway, err := s.findAlias(ctx, request.AliasAway)
 	if err != nil {
 		return 0, fmt.Errorf("failed to find away team alias: %w", err)
-	}
-
-	if aliasAway.FootballApiTeam == nil {
-		return 0, errors.New(fmt.Sprintf("alias %s found, but there is no releated external(football api) team", aliasAway.Alias))
 	}
 
 	match, err := s.matchRepository.One(ctx, repository.Match{
@@ -94,7 +86,6 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		Date:     &date,
 		TeamID:   &aliasHome.FootballApiTeam.ID,
 	})
-
 	if err != nil {
 		return 0, fmt.Errorf("unable to search fixtures in external api: %w", err)
 	}
@@ -130,16 +121,15 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		MatchID: created.ID,
 		Data:    *fixtureAsJson,
 	})
-
 	if err != nil {
 		return 0, fmt.Errorf("failed to create football api fixture with match id %d: %w", created.ID, err)
 	}
 
-	createdFixture.Match = created
 	if err := s.scheduleMatchResultAcquiring(matchResultTaskParams{
+		match:     fromRepositoryMatch(*created),
 		fixture:   fromRepositoryFootballAPIFixture(*createdFixture),
-		aliasHome: fromRepositoryAlias(*aliasHome),
-		aliasAway: fromRepositoryAlias(*aliasAway),
+		aliasHome: *aliasHome,
+		aliasAway: *aliasAway,
 		season:    season,
 		timezone:  timezone,
 	}); err != nil {
@@ -154,8 +144,76 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 	return created.ID, nil
 }
 
+func (s *MatchService) List(ctx context.Context, status string) ([]Match, error) {
+	resultStatus := repository.ResultStatus(status)
+	matches, err := s.matchRepository.List(ctx, resultStatus)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list matches with %s result status: %w", resultStatus, err)
+	}
+
+	return fromRepositoryMatches(matches), nil
+}
+
+func (s *MatchService) ScheduleMatchResultAcquiring(match Match) error {
+	if len(match.FootballApiFixtures) < 1 {
+		return errors.New("match relation football api fixtures are not found")
+	}
+
+	if match.HomeTeam == nil || match.AwayTeam == nil {
+		return errors.New("match relations home/away team are not found")
+	}
+
+	if len(match.HomeTeam.Aliases) < 1 {
+		return errors.New("match relation home team doesn't have aliases")
+	}
+
+	if len(match.AwayTeam.Aliases) < 1 {
+		return errors.New("match relation away team doesn't have aliases")
+	}
+
+	params := matchResultTaskParams{
+		match:     Match{ID: match.ID, StartsAt: match.StartsAt},
+		fixture:   match.FootballApiFixtures[0],
+		aliasHome: match.HomeTeam.Aliases[0],
+		aliasAway: match.AwayTeam.Aliases[0],
+		season:    uint(s.getSeason()),
+		timezone:  s.location.String(),
+	}
+	return s.scheduleMatchResultAcquiring(params)
+}
+
+func (s *MatchService) Update(ctx context.Context, id uint, status string) error {
+	resultStatus := repository.ResultStatus(status)
+	_, err := s.matchRepository.Update(ctx, id, resultStatus)
+	if err != nil {
+		return fmt.Errorf("failed to set match status to %s: %w", repository.Scheduled, err)
+	}
+
+	return nil
+}
+
+func (s *MatchService) findAlias(ctx context.Context, alias string) (*Alias, error) {
+	foundAlias, err := s.aliasRepository.Find(ctx, alias)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find team alias: %w", err)
+	}
+
+	if foundAlias.FootballApiTeam == nil {
+		return nil, errors.New(fmt.Sprintf("alias %s found, but there is no releated external(football api) team", alias))
+	}
+
+	mapped := fromRepositoryAlias(*foundAlias)
+	return &mapped, nil
+}
+
 func (s *MatchService) scheduleMatchResultAcquiring(params matchResultTaskParams) error {
-	matchDetails := fmt.Sprintf("match with id %d between %s and %s starting at %s", params.fixture.Match.ID, params.aliasHome.Alias, params.aliasAway.Alias, params.fixture.Match.StartsAt)
+	matchDetails := fmt.Sprintf(
+		"match with id %d between %s and %s starting at %s",
+		params.match.ID,
+		params.aliasHome.Alias,
+		params.aliasAway.Alias,
+		params.match.StartsAt,
+	)
 
 	fmt.Printf("scheduling a task for %s \n", matchDetails)
 
@@ -163,12 +221,12 @@ func (s *MatchService) scheduleMatchResultAcquiring(params matchResultTaskParams
 	ch := make(chan resultTaskChan)
 	search := client.FixtureSearch{Season: params.season, Timezone: params.timezone, ID: &params.fixture.ID}
 
-	scheduledTask, err := s.taskScheduler.Schedule(s.getTaskFunc(i, ch, search, matchDetails), timeBetweenRetries, params.fixture.Match.StartsAt.Add(firstAttemptDelay))
+	scheduledTask, err := s.taskScheduler.Schedule(s.getTaskFunc(i, ch, search, matchDetails), timeBetweenRetries, params.match.StartsAt.Add(firstAttemptDelay))
 	if err != nil {
 		return fmt.Errorf("failed to schedule a task for %s: %w", matchDetails, err)
 	}
 
-	go s.handleTaskResult(context.Background(), scheduledTask, ch, params.fixture, matchDetails)
+	go s.handleTaskResult(context.Background(), scheduledTask, ch, params.fixture.ID, params.match.ID, matchDetails)
 
 	return nil
 }
@@ -232,7 +290,8 @@ func (s *MatchService) handleTaskResult(
 	ctx context.Context,
 	scheduledTask *chrono.ScheduledRunnableTask,
 	ch <-chan resultTaskChan,
-	fixture FootballAPIFixture,
+	fixtureID uint,
+	matchID uint,
 	matchDetails string,
 ) {
 	result := <-ch
@@ -241,7 +300,7 @@ func (s *MatchService) handleTaskResult(
 	fmt.Printf("scheduled task cancelled for %s \n", matchDetails)
 
 	if result.error != nil {
-		_, err := s.matchRepository.Update(ctx, fixture.Match.ID, repository.Error)
+		_, err := s.matchRepository.Update(ctx, matchID, repository.Error)
 		if err != nil {
 			fmt.Printf("failed to update result status to %s for %s: %s \n", repository.Error, matchDetails, err.Error())
 			return
@@ -256,13 +315,13 @@ func (s *MatchService) handleTaskResult(
 		return
 	}
 
-	_, err = s.footballAPIFixtureRepository.Update(ctx, fixture.ID, *fixtureAsJson)
+	_, err = s.footballAPIFixtureRepository.Update(ctx, fixtureID, *fixtureAsJson)
 	if err != nil {
 		fmt.Printf("failed to update fixture for %s: %s \n", matchDetails, err.Error())
 		return
 	}
 
-	_, err = s.matchRepository.Update(ctx, fixture.Match.ID, repository.Successful)
+	_, err = s.matchRepository.Update(ctx, matchID, repository.Successful)
 	if err != nil {
 		fmt.Printf("failed to update result status to %s for %s: %s \n", repository.Successful, matchDetails, err.Error())
 		return
@@ -291,6 +350,7 @@ func writeError(matchDetails string, ch chan<- resultTaskChan) {
 }
 
 type matchResultTaskParams struct {
+	match     Match
 	fixture   FootballAPIFixture
 	aliasHome Alias
 	aliasAway Alias

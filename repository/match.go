@@ -25,6 +25,22 @@ func (r *MatchRepository) Create(ctx context.Context, match Match) (*Match, erro
 	return &match, nil
 }
 
+func (r *MatchRepository) List(ctx context.Context, resultStatus ResultStatus) ([]Match, error) {
+	var matches []Match
+	result := r.db.WithContext(ctx).
+		Where(&Match{ResultStatus: resultStatus}).
+		Preload("FootballApiFixtures").
+		Preload("HomeTeam.Aliases").
+		Preload("AwayTeam.Aliases").
+		Find(&matches)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return matches, nil
+}
+
 func (r *MatchRepository) One(ctx context.Context, search Match) (*Match, error) {
 	var match Match
 

@@ -16,6 +16,7 @@ type AliasRepository interface {
 
 type MatchRepository interface {
 	Create(ctx context.Context, match repository.Match) (*repository.Match, error)
+	List(ctx context.Context, resultStatus repository.ResultStatus) ([]repository.Match, error)
 	One(ctx context.Context, search repository.Match) (*repository.Match, error)
 	Update(ctx context.Context, id uint, resultStatus repository.ResultStatus) (*repository.Match, error)
 }
