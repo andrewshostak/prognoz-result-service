@@ -6,7 +6,6 @@ import (
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/repository"
-	"github.com/jackc/pgtype"
 	"github.com/procyon-projects/chrono"
 )
 
@@ -22,8 +21,8 @@ type MatchRepository interface {
 }
 
 type FootballAPIFixtureRepository interface {
-	Create(ctx context.Context, fixture repository.FootballApiFixture) (*repository.FootballApiFixture, error)
-	Update(ctx context.Context, id uint, data pgtype.JSONB) (*repository.FootballApiFixture, error)
+	Create(ctx context.Context, fixture repository.FootballApiFixture, data repository.Data) (*repository.FootballApiFixture, error)
+	Update(ctx context.Context, id uint, data repository.Data) (*repository.FootballApiFixture, error)
 }
 
 type FootballAPIClient interface {

@@ -50,11 +50,10 @@ type FootballAPIFixture struct {
 	ID uint
 }
 
-type Result struct {
+type Data struct {
 	Fixture Fixture
 	Teams   TeamsExternal
 	Goals   Goals
-	Score   Score
 }
 
 type Fixture struct {
@@ -78,13 +77,9 @@ type Goals struct {
 	Away uint
 }
 
-type Score struct {
-	Fulltime  Goals
-	Extratime Goals
-}
-
 type Status struct {
 	Short string
+	Long  string
 }
 
 func fromRepositoryFootballAPIFixture(f repository.FootballApiFixture) FootballAPIFixture {
@@ -93,12 +88,13 @@ func fromRepositoryFootballAPIFixture(f repository.FootballApiFixture) FootballA
 	}
 }
 
-func fromClientFootballAPIFixture(c client.Result) Result {
-	return Result{
+func fromClientFootballAPIFixture(c client.Result) Data {
+	return Data{
 		Fixture: Fixture{
 			ID: c.Fixture.ID,
 			Status: Status{
 				Short: c.Fixture.Status.Short,
+				Long:  c.Fixture.Status.Long,
 			},
 			Date: c.Fixture.Date,
 		},
@@ -115,16 +111,6 @@ func fromClientFootballAPIFixture(c client.Result) Result {
 		Goals: Goals{
 			Home: c.Goals.Home,
 			Away: c.Goals.Away,
-		},
-		Score: Score{
-			Fulltime: Goals{
-				Home: c.Score.Fulltime.Home,
-				Away: c.Score.Fulltime.Away,
-			},
-			Extratime: Goals{
-				Home: c.Score.Extratime.Home,
-				Away: c.Score.Extratime.Away,
-			},
 		},
 	}
 }
@@ -191,5 +177,32 @@ func fromRepositoryAlias(a repository.Alias) Alias {
 		Alias:           a.Alias,
 		TeamID:          a.TeamID,
 		FootballApiTeam: footballAPITeam,
+	}
+}
+
+func toRepositoryFootballAPIFixtureData(data Data) repository.Data {
+	return repository.Data{
+		Fixture: repository.Fixture{
+			ID: data.Fixture.ID,
+			Status: repository.Status{
+				Short: data.Fixture.Status.Short,
+				Long:  data.Fixture.Status.Long,
+			},
+			Date: data.Fixture.Date,
+		},
+		Teams: repository.TeamsExternal{
+			Home: repository.TeamExternal{
+				ID:   data.Teams.Home.ID,
+				Name: data.Teams.Home.Name,
+			},
+			Away: repository.TeamExternal{
+				ID:   data.Teams.Away.ID,
+				Name: data.Teams.Away.Name,
+			},
+		},
+		Goals: repository.Goals{
+			Home: data.Goals.Home,
+			Away: data.Goals.Away,
+		},
 	}
 }

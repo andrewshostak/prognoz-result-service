@@ -63,3 +63,35 @@ const (
 	Error           ResultStatus = "error"
 	Successful      ResultStatus = "successful"
 )
+
+type Data struct {
+	Fixture Fixture       `json:"fixture"`
+	Teams   TeamsExternal `json:"teams"`
+	Goals   Goals         `json:"goals"`
+}
+
+type Fixture struct {
+	ID     uint   `json:"id"`
+	Status Status `json:"status"`
+	Date   string `json:"date"`
+}
+
+type TeamsExternal struct {
+	Home TeamExternal `json:"home"`
+	Away TeamExternal `json:"away"`
+}
+
+type TeamExternal struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+type Goals struct {
+	Home uint `json:"home"`
+	Away uint `json:"away"`
+}
+
+type Status struct {
+	Short string `json:"short"`
+	Long  string `json:"long"`
+}

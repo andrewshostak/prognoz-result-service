@@ -9,7 +9,6 @@ import (
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/errs"
 	"github.com/andrewshostak/result-service/repository"
-	"github.com/jackc/pgtype"
 	"github.com/procyon-projects/chrono"
 )
 
@@ -94,7 +93,7 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		return 0, errs.UnexpectedNumberOfItemsError{Message: fmt.Sprintf("fixture starting at %s with team id %d is not found in external api", date, aliasHome.FootballApiTeam.ID)}
 	}
 
-	fixture := response.Response[0]
+	fixture := fromClientFootballAPIFixture(response.Response[0])
 
 	if fixture.Fixture.Status.Short != stateNotStarted {
 		return 0, fmt.Errorf("%s: %w", fmt.Sprintf("status of the fixture with external id %d is not %s", fixture.Fixture.ID, stateNotStarted), errs.ErrIncorrectFixtureStatus)
@@ -111,16 +110,10 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		return 0, fmt.Errorf("failed to create match with team ids %d and %d starting at %s: %w", aliasHome.TeamID, aliasAway.TeamID, startsAt, err)
 	}
 
-	fixtureAsJson, err := toJsonB(fixture)
-	if err != nil {
-		return 0, err
-	}
-
 	createdFixture, err := s.footballAPIFixtureRepository.Create(ctx, repository.FootballApiFixture{
 		ID:      fixture.Fixture.ID,
 		MatchID: created.ID,
-		Data:    *fixtureAsJson,
-	})
+	}, toRepositoryFootballAPIFixtureData(fixture))
 	if err != nil {
 		return 0, fmt.Errorf("failed to create football api fixture with match id %d: %w", created.ID, err)
 	}
@@ -269,8 +262,10 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 			return
 		}
 
-		if response.Response[0].Fixture.Status.Long != stateMatchFinished {
-			fmt.Printf("status is not finished (got \"%s\") for %s\n", response.Response[0].Fixture.Status.Long, matchDetails)
+		fixture := fromClientFootballAPIFixture(response.Response[0])
+
+		if fixture.Fixture.Status.Long != stateMatchFinished {
+			fmt.Printf("status is not finished (got \"%s\") for %s\n", fixture.Fixture.Status.Long, matchDetails)
 			i++
 
 			if retriesLimitReached(i) {
@@ -279,9 +274,8 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 			return
 		}
 
-		fmt.Printf("received result %d:%d for the match %s. cancelling the task \n", response.Response[0].Score.Fulltime.Home, response.Response[0].Score.Fulltime.Away, matchDetails)
-		f := fromClientFootballAPIFixture(response.Response[0])
-		ch <- resultTaskChan{fixture: &f}
+		fmt.Printf("received result %d:%d for the match %s. cancelling the task \n", fixture.Goals.Home, fixture.Goals.Away, matchDetails)
+		ch <- resultTaskChan{fixture: &fixture}
 		close(ch)
 	}
 }
@@ -309,20 +303,12 @@ func (s *MatchService) handleTaskResult(
 		return
 	}
 
-	fixtureAsJson, err := toJsonB(result.fixture)
-	if err != nil {
-		fmt.Printf("failed to set fixture data as json for %s: %s \n", matchDetails, err.Error())
-		return
-	}
-
-	_, err = s.footballAPIFixtureRepository.Update(ctx, fixtureID, *fixtureAsJson)
-	if err != nil {
+	if _, err := s.footballAPIFixtureRepository.Update(ctx, fixtureID, toRepositoryFootballAPIFixtureData(*result.fixture)); err != nil {
 		fmt.Printf("failed to update fixture for %s: %s \n", matchDetails, err.Error())
 		return
 	}
 
-	_, err = s.matchRepository.Update(ctx, matchID, repository.Successful)
-	if err != nil {
+	if _, err := s.matchRepository.Update(ctx, matchID, repository.Successful); err != nil {
 		fmt.Printf("failed to update result status to %s for %s: %s \n", repository.Successful, matchDetails, err.Error())
 		return
 	}
@@ -332,15 +318,6 @@ func (s *MatchService) handleTaskResult(
 
 func retriesLimitReached(i int) bool {
 	return i > numberOfRetries
-}
-
-func toJsonB(result interface{}) (*pgtype.JSONB, error) {
-	var fixtureAsJson pgtype.JSONB
-	if err := fixtureAsJson.Set(result); err != nil {
-		return nil, err
-	}
-
-	return &fixtureAsJson, nil
 }
 
 func writeError(matchDetails string, ch chan<- resultTaskChan) {
@@ -359,6 +336,6 @@ type matchResultTaskParams struct {
 }
 
 type resultTaskChan struct {
-	fixture *Result
+	fixture *Data
 	error   error
 }
