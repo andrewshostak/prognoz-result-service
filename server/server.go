@@ -52,7 +52,7 @@ func StartServer() {
 		taskScheduler,
 		cfg.Location(),
 	)
-	subscriptionService := service.NewSubscriptionService(subscriptionRepository)
+	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository)
 
 	matchHandler := handler.NewMatchHandler(matchService)
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
