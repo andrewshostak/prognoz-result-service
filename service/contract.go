@@ -31,6 +31,7 @@ type FootballAPIClient interface {
 
 type SubscriptionRepository interface {
 	Create(ctx context.Context, subscription repository.Subscription) (*repository.Subscription, error)
+	ListUnNotified(ctx context.Context) ([]repository.Subscription, error)
 }
 
 type TaskScheduler interface {

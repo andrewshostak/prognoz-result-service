@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
 
 	"github.com/andrewshostak/result-service/errs"
+	"gorm.io/gorm"
 )
 
 type SubscriptionRepository struct {
@@ -31,4 +31,20 @@ func (r *SubscriptionRepository) Create(ctx context.Context, subscription Subscr
 	}
 
 	return &subscription, nil
+}
+
+func (r *SubscriptionRepository) ListUnNotified(ctx context.Context) ([]Subscription, error) {
+	var subscriptions []Subscription
+	result := r.db.WithContext(ctx).
+		Where("notified_at IS NULL").
+		Joins("Match").
+		Where("result_status = ?", Successful).
+		Preload("Match.FootballApiFixtures").
+		Find(&subscriptions)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return subscriptions, nil
 }
