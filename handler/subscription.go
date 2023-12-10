@@ -45,3 +45,44 @@ func (h *SubscriptionHandler) Create(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+func (h *SubscriptionHandler) Delete(c *gin.Context) {
+	var params DeleteSubscriptionRequest
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.subscriptionService.Delete(c.Request.Context(), params.ToDomain())
+	if errors.As(err, &errs.AliasNotFoundError{}) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+		return
+	}
+
+	if errors.As(err, &errs.MatchNotFoundError{}) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+		return
+	}
+
+	if errors.As(err, &errs.SubscriptionNotFoundError{}) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+		return
+	}
+
+	if errors.As(err, &errs.SubscriptionWrongStatusError{}) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

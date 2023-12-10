@@ -6,16 +6,18 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/andrewshostak/result-service/errs"
 	"github.com/andrewshostak/result-service/repository"
 )
 
 type SubscriptionService struct {
 	subscriptionRepository SubscriptionRepository
 	matchRepository        MatchRepository
+	aliasRepository        AliasRepository
 }
 
-func NewSubscriptionService(subscriptionRepository SubscriptionRepository, matchRepository MatchRepository) *SubscriptionService {
-	return &SubscriptionService{subscriptionRepository: subscriptionRepository, matchRepository: matchRepository}
+func NewSubscriptionService(subscriptionRepository SubscriptionRepository, matchRepository MatchRepository, aliasRepository AliasRepository) *SubscriptionService {
+	return &SubscriptionService{subscriptionRepository: subscriptionRepository, matchRepository: matchRepository, aliasRepository: aliasRepository}
 }
 
 func (s *SubscriptionService) Create(ctx context.Context, request CreateSubscriptionRequest) error {
@@ -37,6 +39,48 @@ func (s *SubscriptionService) Create(ctx context.Context, request CreateSubscrip
 
 	if err != nil {
 		return fmt.Errorf("failed to create subscription: %w", err)
+	}
+
+	return nil
+}
+
+func (s *SubscriptionService) Delete(ctx context.Context, request DeleteSubscriptionRequest) error {
+	aliasHome, err := s.aliasRepository.Find(ctx, request.AliasHome)
+	if err != nil {
+		return fmt.Errorf("failed to find home team alias: %w", err)
+	}
+
+	aliasAway, err := s.aliasRepository.Find(ctx, request.AliasAway)
+	if err != nil {
+		return fmt.Errorf("failed to find away team alias: %w", err)
+	}
+
+	match, err := s.matchRepository.One(ctx, repository.Match{
+		StartsAt:   request.StartsAt,
+		HomeTeamID: aliasHome.TeamID,
+		AwayTeamID: aliasAway.TeamID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to find a match: %w", err)
+	}
+
+	found, err := s.subscriptionRepository.One(ctx, match.ID, request.SecretKey, request.BaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to find a subscription: %w", err)
+	}
+
+	subscription, err := fromRepositorySubscription(*found)
+	if err != nil {
+		return fmt.Errorf("failed to map from repository subscription: %w", err)
+	}
+
+	if subscription.Status != "pending" {
+		return errs.SubscriptionNotFoundError{Message: fmt.Sprintf("subscription %d has status %s instead of %s", subscription.ID, subscription.Status, "pending")}
+	}
+
+	err = s.subscriptionRepository.Delete(ctx, subscription.ID)
+	if err != nil {
+		return fmt.Errorf("failed to delete subscription: %w", err)
 	}
 
 	return nil

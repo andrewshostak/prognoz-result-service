@@ -53,13 +53,14 @@ func StartServer() {
 		taskScheduler,
 		cfg.Location(),
 	)
-	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository)
+	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository, aliasRepository)
 	notifierService := service.NewNotifierService(subscriptionRepository, notifierClient)
 
 	matchHandler := handler.NewMatchHandler(matchService)
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
 	v1.POST("/matches", matchHandler.Create)
 	v1.POST("/subscriptions", subscriptionHandler.Create)
+	v1.DELETE("/subscriptions", subscriptionHandler.Delete)
 
 	ctx := context.Background()
 	matchResultScheduleInitializer := initializer.NewMatchResultScheduleInitializer(matchService)

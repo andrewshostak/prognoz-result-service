@@ -236,7 +236,8 @@ TODO
 
 5) How to back-fill aliases/football_api_matches ?
 
-### List of improvements after first working version
+### List of improvements
+- move durations to env vars
 - graceful shutdown
 - replace fmt.Printf with good logger
 - get two aliases on match creation endpoint concurrently
@@ -245,4 +246,7 @@ TODO
 - fix broken gorm errors checks
 - update football api fixture and match in transaction
 - add response bodies from API calls to error messages
+- add unit tests for services: match, notifier, subscription
+- add linter
+- upgrade go version to 1.21
 

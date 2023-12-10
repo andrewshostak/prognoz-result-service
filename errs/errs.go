@@ -24,6 +24,14 @@ func (e MatchNotFoundError) Error() string {
 	return e.Message
 }
 
+type SubscriptionNotFoundError struct {
+	Message string
+}
+
+func (e SubscriptionNotFoundError) Error() string {
+	return e.Message
+}
+
 type UnexpectedNumberOfItemsError struct {
 	Message string
 }
@@ -45,5 +53,13 @@ type WrongMatchIDError struct {
 }
 
 func (e WrongMatchIDError) Error() string {
+	return e.Message
+}
+
+type SubscriptionWrongStatusError struct {
+	Message string
+}
+
+func (e SubscriptionWrongStatusError) Error() string {
 	return e.Message
 }

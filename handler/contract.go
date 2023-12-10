@@ -12,4 +12,5 @@ type MatchService interface {
 
 type SubscriptionService interface {
 	Create(ctx context.Context, request service.CreateSubscriptionRequest) error
+	Delete(ctx context.Context, request service.DeleteSubscriptionRequest) error
 }

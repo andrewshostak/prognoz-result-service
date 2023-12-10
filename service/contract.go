@@ -35,6 +35,8 @@ type NotifierClient interface {
 
 type SubscriptionRepository interface {
 	Create(ctx context.Context, subscription repository.Subscription) (*repository.Subscription, error)
+	Delete(ctx context.Context, id uint) error
+	One(ctx context.Context, matchID uint, key string, baseURL string) (*repository.Subscription, error)
 	ListUnNotified(ctx context.Context) ([]repository.Subscription, error)
 	Update(ctx context.Context, id uint, subscription repository.Subscription) error
 }

@@ -20,6 +20,14 @@ type CreateSubscriptionRequest struct {
 	SecretKey string
 }
 
+type DeleteSubscriptionRequest struct {
+	StartsAt  time.Time
+	AliasHome string
+	AliasAway string
+	BaseURL   string
+	SecretKey string
+}
+
 type Match struct {
 	ID       uint
 	StartsAt time.Time
@@ -59,6 +67,7 @@ type Subscription struct {
 	MatchID    uint
 	Key        string
 	CreatedAt  time.Time
+	Status     string
 	NotifiedAt *time.Time
 
 	Match *Match
@@ -227,6 +236,7 @@ func fromRepositorySubscription(s repository.Subscription) (*Subscription, error
 		MatchID:    s.MatchID,
 		Key:        s.Key,
 		CreatedAt:  s.CreatedAt,
+		Status:     string(s.Status),
 		NotifiedAt: s.NotifiedAt,
 		Match:      match,
 	}, nil

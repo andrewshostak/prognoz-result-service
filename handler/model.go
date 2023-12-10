@@ -18,6 +18,14 @@ type CreateSubscriptionRequest struct {
 	SecretKey string `binding:"required" json:"secret_key"`
 }
 
+type DeleteSubscriptionRequest struct {
+	StartsAt  time.Time `form:"starts_at" binding:"required" time_format:"2006-01-02T15:04:05Z"`
+	AliasHome string    `form:"alias_home" binding:"required"`
+	AliasAway string    `form:"alias_away" binding:"required"`
+	BaseURL   string    `form:"base_url" binding:"required"`
+	SecretKey string    `form:"secret_key" binding:"required"`
+}
+
 func (cmr *CreateMatchRequest) ToDomain() service.CreateMatchRequest {
 	return service.CreateMatchRequest{
 		StartsAt:  cmr.StartsAt,
@@ -31,5 +39,15 @@ func (csr *CreateSubscriptionRequest) ToDomain() service.CreateSubscriptionReque
 		MatchID:   csr.MatchID,
 		URL:       csr.URL,
 		SecretKey: csr.SecretKey,
+	}
+}
+
+func (dsr *DeleteSubscriptionRequest) ToDomain() service.DeleteSubscriptionRequest {
+	return service.DeleteSubscriptionRequest{
+		StartsAt:  dsr.StartsAt,
+		AliasHome: dsr.AliasHome,
+		AliasAway: dsr.AliasAway,
+		BaseURL:   dsr.BaseURL,
+		SecretKey: dsr.SecretKey,
 	}
 }
