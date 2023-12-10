@@ -39,6 +39,7 @@ erDiagram
         Int home_team_id FK
         Int away_team_id FK
         Date started_at
+        String result_status
     }
     
     FootballAPIFixture {
@@ -53,6 +54,7 @@ erDiagram
         Int match_id FK
         String key
         Date created_at
+        String subscription_status
         Date notified_at
     }
     
@@ -130,8 +132,8 @@ Deactivate API
 ### Get match result
 
 1) the scheduled task sends a request to `football-api` to get a fixture data by fixture id. Scheduled job spec:
-- the scheduled task in `result-service` starts in 100 minutes after the match starting date.
-- if the fixture status is not `FT`, `result-service` will send more requests to `football-api`, until receives the `FT` status.
+- the scheduled task in `result-service` starts in 115 minutes after the match starting date.
+- if the fixture status is not finished, `result-service` will send more requests to `football-api`, until receives the finished status.
 - the interval between calls to `football-api` is 15 minutes.
 - max number of retries is 5.
 2) when `result-service` receives ended match it cancels scheduled task and updates fixture/match in the DB
@@ -158,7 +160,28 @@ Deactivate ResultService
 
 ### Notify subscribers
 
-TODO
+1) `result-service` polls database every 1 minute to get unnotified subscriptions of ended matches.
+2) `result-service` iterates through subscriptions and notifies them by making an HTTP-call to a URL
+3) depending on successfulness of HTTP-call `result-service` updates subscription status
+
+```mermaid
+sequenceDiagram
+participant ResultService
+participant API
+Activate ResultService
+ResultService->>ResultService: Gets unnotified subscriptions from DB every N-minute
+loop Iterates through subscriptions
+    ResultService->>API: Sends a request with the match result
+    Activate API
+    API-->>ResultService: Returns success
+    alt error in API
+        API-->>ResultService: Returns error
+    end
+    Deactivate API
+    ResultService->>ResultService: Updates subscription status
+end
+Deactivate ResultService
+```
 
 ### Delete a match
 
@@ -209,27 +232,7 @@ TODO
 `result-service` => `football-api`
 1) An env variable `RAPID_API_KEY` is stored in env variables and attached to each request 
 
-
-### cronjob package requirements:
-  - Save params during its lifetime: fixture_id, match_id, start time.
-  - set starting time (100 minutes since match start)
-  - frequency (every 10 minutes, if possible 5-10-20-40)
-  - ability to stop (when result is present)
-  - ability to cancel cronjob if match was deleted or updated
-- when cronjob in `result-service` receives result, it sends a request to `prognoz-api` endpoint to add result.
-
-### Service initialization
-- get unfinished jobs and reschedule them
-
-cron packages list:
-[chrono](https://github.com/procyon-projects/chrono)
-https://github.com/gocraft/work
-https://github.com/hibiken/asynq
-
 ### Open questions
-
-4) What should be fulfilled during result-service initialization?   
-- football api healthcheck? (TODO: do they even have healthcheck)
 
 5) How to back-fill aliases/football_api_matches ?
 
