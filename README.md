@@ -234,9 +234,12 @@ https://github.com/hibiken/asynq
 5) How to back-fill aliases/football_api_matches ?
 
 ### List of improvements after first working version
+- graceful shutdown
+- replace fmt.Printf with good logger
 - get two aliases on match creation endpoint concurrently
+- notify subscribers concurrently
 - create match and football api fixture in transaction
 - fix broken gorm errors checks
-- replace fmt.Printf with good logger
 - update football api fixture and match in transaction
+- add response bodies from API calls to error messages
 

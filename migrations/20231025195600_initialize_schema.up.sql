@@ -30,12 +30,15 @@ create table if not exists aliases (
     foreign key (team_id) references teams (id) on update cascade on delete restrict
 );
 
+create type subscription_status as enum ('pending', 'error', 'successful');
+
 create table if not exists subscriptions (
     id bigserial primary key,
     url text unique,
     match_id bigserial,
     key text,
     created_at timestamp not null,
+    status subscription_status not null default 'pending',
     notified_at timestamp,
     foreign key (match_id) references matches (id) on update cascade on delete restrict
 );

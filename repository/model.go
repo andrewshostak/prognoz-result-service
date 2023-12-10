@@ -46,12 +46,13 @@ type FootballApiFixture struct {
 }
 
 type Subscription struct {
-	ID         uint       `gorm:"column:id;primaryKey"`
-	Url        string     `gorm:"column:url;unique"`
-	MatchID    uint       `gorm:"column:match_id"`
-	Key        string     `gorm:"column:key;unique"`
-	CreatedAt  time.Time  `gorm:"column:created_at"`
-	NotifiedAt *time.Time `gorm:"column:notified_at"`
+	ID         uint               `gorm:"column:id;primaryKey"`
+	Url        string             `gorm:"column:url;unique"`
+	MatchID    uint               `gorm:"column:match_id"`
+	Key        string             `gorm:"column:key;unique"`
+	CreatedAt  time.Time          `gorm:"column:created_at"`
+	Status     SubscriptionStatus `gorm:"column:status;default:pending"`
+	NotifiedAt *time.Time         `gorm:"column:notified_at"`
 
 	Match *Match `gorm:"foreignKey:match_id"`
 }
@@ -64,6 +65,14 @@ const (
 	SchedulingError ResultStatus = "scheduling_error"
 	Error           ResultStatus = "error"
 	Successful      ResultStatus = "successful"
+)
+
+type SubscriptionStatus string
+
+const (
+	PendingSub    SubscriptionStatus = "pending"
+	ErrorSub      SubscriptionStatus = "error"
+	SuccessfulSub SubscriptionStatus = "successful"
 )
 
 type Data struct {

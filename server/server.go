@@ -36,6 +36,7 @@ func StartServer() {
 	v1 := r.Group("/v1")
 
 	footballAPIClient := client.NewFootballAPIClient(&httpClient, cfg.FootballAPIBaseURL, cfg.RapidAPIKey)
+	notifierClient := client.NewNotifierClient(&httpClient)
 
 	aliasRepository := repository.NewAliasRepository(db)
 	matchRepository := repository.NewMatchRepository(db)
@@ -53,6 +54,7 @@ func StartServer() {
 		cfg.Location(),
 	)
 	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository)
+	notifierService := service.NewNotifierService(subscriptionRepository, notifierClient)
 
 	matchHandler := handler.NewMatchHandler(matchService)
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
@@ -64,6 +66,9 @@ func StartServer() {
 	if err := matchResultScheduleInitializer.ReSchedule(ctx); err != nil {
 		panic(err)
 	}
+
+	notifierInitializer := initializer.NewNotifierInitializer(notifierService)
+	notifierInitializer.Start()
 
 	r.Run(fmt.Sprintf(":%s", cfg.Port))
 }

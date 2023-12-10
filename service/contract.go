@@ -29,9 +29,14 @@ type FootballAPIClient interface {
 	SearchFixtures(ctx context.Context, search client.FixtureSearch) (*client.FixturesResponse, error)
 }
 
+type NotifierClient interface {
+	Notify(ctx context.Context, notification client.Notification) error
+}
+
 type SubscriptionRepository interface {
 	Create(ctx context.Context, subscription repository.Subscription) (*repository.Subscription, error)
 	ListUnNotified(ctx context.Context) ([]repository.Subscription, error)
+	Update(ctx context.Context, id uint, subscription repository.Subscription) error
 }
 
 type TaskScheduler interface {

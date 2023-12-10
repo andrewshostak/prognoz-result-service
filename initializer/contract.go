@@ -11,3 +11,7 @@ type MatchService interface {
 	ScheduleMatchResultAcquiring(match service.Match) error
 	Update(ctx context.Context, id uint, status string) error
 }
+
+type NotifierService interface {
+	NotifySubscribers(ctx context.Context) error
+}

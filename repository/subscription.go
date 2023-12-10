@@ -36,7 +36,7 @@ func (r *SubscriptionRepository) Create(ctx context.Context, subscription Subscr
 func (r *SubscriptionRepository) ListUnNotified(ctx context.Context) ([]Subscription, error) {
 	var subscriptions []Subscription
 	result := r.db.WithContext(ctx).
-		Where("notified_at IS NULL").
+		Where("status = ?", PendingSub).
 		Joins("Match").
 		Where("result_status = ?", Successful).
 		Preload("Match.FootballApiFixtures").
@@ -47,4 +47,14 @@ func (r *SubscriptionRepository) ListUnNotified(ctx context.Context) ([]Subscrip
 	}
 
 	return subscriptions, nil
+}
+
+func (r *SubscriptionRepository) Update(ctx context.Context, id uint, subscription Subscription) error {
+	sub := Subscription{ID: id}
+	result := r.db.WithContext(ctx).Model(&sub).Updates(subscription)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
 }

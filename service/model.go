@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/andrewshostak/result-service/client"
@@ -47,45 +48,66 @@ type FootballApiTeam struct {
 }
 
 type FootballAPIFixture struct {
-	ID uint
-}
-
-type Data struct {
-	Fixture Fixture
-	Teams   TeamsExternal
-	Goals   Goals
-}
-
-type Fixture struct {
-	ID     uint
-	Status Status
-	Date   string
-}
-
-type TeamsExternal struct {
-	Home TeamExternal
-	Away TeamExternal
-}
-
-type TeamExternal struct {
 	ID   uint
-	Name string
-}
-
-type Goals struct {
 	Home uint
 	Away uint
 }
 
-type Status struct {
-	Short string
-	Long  string
+type Subscription struct {
+	ID         uint
+	Url        string
+	MatchID    uint
+	Key        string
+	CreatedAt  time.Time
+	NotifiedAt *time.Time
+
+	Match *Match
 }
 
-func fromRepositoryFootballAPIFixture(f repository.FootballApiFixture) FootballAPIFixture {
-	return FootballAPIFixture{
-		ID: f.ID,
+type Data struct {
+	Fixture Fixture       `json:"fixture"`
+	Teams   TeamsExternal `json:"teams"`
+	Goals   Goals         `json:"goals"`
+}
+
+type Fixture struct {
+	ID     uint   `json:"id"`
+	Status Status `json:"status"`
+	Date   string `json:"date"`
+}
+
+type TeamsExternal struct {
+	Home TeamExternal `json:"home"`
+	Away TeamExternal `json:"away"`
+}
+
+type TeamExternal struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+type Goals struct {
+	Home uint `json:"home"`
+	Away uint `json:"away"`
+}
+
+type Status struct {
+	Short string `json:"short"`
+	Long  string `json:"long"`
+}
+
+func fromRepositoryFootballAPIFixture(f repository.FootballApiFixture) (*FootballAPIFixture, error) {
+	d := &Data{}
+	err := json.Unmarshal(f.Data.Bytes, d)
+	if err != nil {
+		return nil, err
 	}
+
+	return &FootballAPIFixture{
+		ID:   f.ID,
+		Home: d.Goals.Home,
+		Away: d.Goals.Away,
+	}, nil
 }
 
 func fromClientFootballAPIFixture(c client.Result) Data {
@@ -115,10 +137,14 @@ func fromClientFootballAPIFixture(c client.Result) Data {
 	}
 }
 
-func fromRepositoryMatch(m repository.Match) Match {
+func fromRepositoryMatch(m repository.Match) (*Match, error) {
 	fixtures := make([]FootballAPIFixture, 0, len(m.FootballApiFixtures))
 	for _, fixture := range m.FootballApiFixtures {
-		fixtures = append(fixtures, fromRepositoryFootballAPIFixture(fixture))
+		repoApiFixture, err := fromRepositoryFootballAPIFixture(fixture)
+		if err != nil {
+			return nil, err
+		}
+		fixtures = append(fixtures, *repoApiFixture)
 	}
 
 	var homeTeam *Team
@@ -140,22 +166,26 @@ func fromRepositoryMatch(m repository.Match) Match {
 
 		awayTeam = &Team{ID: m.AwayTeam.ID, Aliases: aliases}
 	}
-	return Match{
+	return &Match{
 		ID:                  m.ID,
 		StartsAt:            m.StartsAt,
 		FootballApiFixtures: fixtures,
 		HomeTeam:            homeTeam,
 		AwayTeam:            awayTeam,
-	}
+	}, nil
 }
 
-func fromRepositoryMatches(m []repository.Match) []Match {
+func fromRepositoryMatches(m []repository.Match) ([]Match, error) {
 	matches := make([]Match, 0, len(m))
 	for i := range m {
-		matches = append(matches, fromRepositoryMatch(m[i]))
+		match, err := fromRepositoryMatch(m[i])
+		if err != nil {
+			return nil, err
+		}
+		matches = append(matches, *match)
 	}
 
-	return matches
+	return matches, nil
 }
 
 func fromRepositoryFootballAPITeam(t repository.FootballApiTeam) FootballApiTeam {
@@ -178,6 +208,41 @@ func fromRepositoryAlias(a repository.Alias) Alias {
 		TeamID:          a.TeamID,
 		FootballApiTeam: footballAPITeam,
 	}
+}
+
+func fromRepositorySubscription(s repository.Subscription) (*Subscription, error) {
+	var match *Match
+
+	if s.Match != nil {
+		mapped, err := fromRepositoryMatch(*s.Match)
+		if err != nil {
+			return nil, err
+		}
+		match = mapped
+	}
+
+	return &Subscription{
+		ID:         s.ID,
+		Url:        s.Url,
+		MatchID:    s.MatchID,
+		Key:        s.Key,
+		CreatedAt:  s.CreatedAt,
+		NotifiedAt: s.NotifiedAt,
+		Match:      match,
+	}, nil
+}
+
+func fromRepositorySubscriptions(s []repository.Subscription) ([]Subscription, error) {
+	subscriptions := make([]Subscription, 0, len(s))
+	for i := range s {
+		repositorySubscription, err := fromRepositorySubscription(s[i])
+		if err != nil {
+			return nil, err
+		}
+		subscriptions = append(subscriptions, *repositorySubscription)
+	}
+
+	return subscriptions, nil
 }
 
 func toRepositoryFootballAPIFixtureData(data Data) repository.Data {

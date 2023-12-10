@@ -5,6 +5,7 @@ import "errors"
 var (
 	ErrIncorrectFixtureStatus          = errors.New("incorrect fixture status")
 	ErrUnexpectedAPIFootballStatusCode = errors.New("unexpected status code received from api-football")
+	ErrUnexpectedNotifierStatusCode    = errors.New("unexpected status code received from notifier")
 )
 
 type AliasNotFoundError struct {

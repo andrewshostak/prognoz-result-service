@@ -13,13 +13,10 @@ import (
 )
 
 const dateFormat = "2006-01-02"
-const (
-	stateNotStarted    = "NS"
-	stateMatchFinished = "Match Finished"
-)
+const stateMatchFinished = "Match Finished"
 const numberOfRetries = 5
 const timeBetweenRetries = 15 * time.Minute
-const firstAttemptDelay = 100 * time.Minute
+const firstAttemptDelay = 115 * time.Minute
 
 type MatchService struct {
 	aliasRepository              AliasRepository
@@ -95,8 +92,8 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 
 	fixture := fromClientFootballAPIFixture(response.Response[0])
 
-	if fixture.Fixture.Status.Short != stateNotStarted {
-		return 0, fmt.Errorf("%s: %w", fmt.Sprintf("status of the fixture with external id %d is not %s", fixture.Fixture.ID, stateNotStarted), errs.ErrIncorrectFixtureStatus)
+	if fixture.Fixture.Status.Long == stateMatchFinished {
+		return 0, fmt.Errorf("%s: %w", fmt.Sprintf("status of the fixture with external id %d is %s", fixture.Fixture.ID, stateMatchFinished), errs.ErrIncorrectFixtureStatus)
 	}
 
 	startsAt, err := time.Parse(time.RFC3339, fixture.Fixture.Date)
@@ -118,9 +115,19 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		return 0, fmt.Errorf("failed to create football api fixture with match id %d: %w", created.ID, err)
 	}
 
+	mappedMatch, err := fromRepositoryMatch(*created)
+	if err != nil {
+		return 0, fmt.Errorf("failed to map from repository match: %w", err)
+	}
+
+	mappedFixture, err := fromRepositoryFootballAPIFixture(*createdFixture)
+	if err != nil {
+		return 0, fmt.Errorf("failed to map from repository api fixture: %w", err)
+	}
+
 	if err := s.scheduleMatchResultAcquiring(matchResultTaskParams{
-		match:     fromRepositoryMatch(*created),
-		fixture:   fromRepositoryFootballAPIFixture(*createdFixture),
+		match:     *mappedMatch,
+		fixture:   *mappedFixture,
 		aliasHome: *aliasHome,
 		aliasAway: *aliasAway,
 		season:    season,
@@ -144,7 +151,12 @@ func (s *MatchService) List(ctx context.Context, status string) ([]Match, error)
 		return nil, fmt.Errorf("failed to list matches with %s result status: %w", resultStatus, err)
 	}
 
-	return fromRepositoryMatches(matches), nil
+	mapped, err := fromRepositoryMatches(matches)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map from repository matches: %w", err)
+	}
+
+	return mapped, nil
 }
 
 func (s *MatchService) ScheduleMatchResultAcquiring(match Match) error {

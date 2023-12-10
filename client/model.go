@@ -49,3 +49,15 @@ type FixtureSearch struct {
 	TeamID   *uint
 	ID       *uint
 }
+
+type Notification struct {
+	Url  string
+	Key  string
+	Home uint
+	Away uint
+}
+
+type NotificationBody struct {
+	Home uint `json:"home"`
+	Away uint `json:"away"`
+}
