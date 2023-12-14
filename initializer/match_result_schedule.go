@@ -26,12 +26,12 @@ func (i *MatchResultScheduleInitializer) ReSchedule(ctx context.Context) error {
 	fmt.Printf("number of found matches to re-schedule: %d \n", len(matches))
 
 	for j := range matches {
-		if err := i.matchService.ScheduleMatchResultAcquiring(matches[j]); err != nil {
+		if errScheduling := i.matchService.ScheduleMatchResultAcquiring(matches[j]); errScheduling != nil {
 			fmt.Printf("failed to schedule match for result acquiring: %s \n", err.Error())
-		}
 
-		if err := i.matchService.Update(ctx, matches[j].ID, "scheduling_error"); err != nil {
-			return fmt.Errorf("failed to update match: %w", err)
+			if err := i.matchService.Update(ctx, matches[j].ID, "scheduling_error"); err != nil {
+				return fmt.Errorf("failed to update match: %w", err)
+			}
 		}
 	}
 

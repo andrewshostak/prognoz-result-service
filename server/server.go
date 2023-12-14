@@ -51,9 +51,8 @@ func StartServer() {
 		footballAPIFixtureRepository,
 		footballAPIClient,
 		taskScheduler,
-		cfg.Location(),
 	)
-	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository, aliasRepository)
+	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository, aliasRepository, taskScheduler)
 	notifierService := service.NewNotifierService(subscriptionRepository, notifierClient)
 
 	matchHandler := handler.NewMatchHandler(matchService)

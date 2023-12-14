@@ -45,7 +45,8 @@ func (r *MatchRepository) One(ctx context.Context, search Match) (*Match, error)
 	var match Match
 
 	result := r.db.WithContext(ctx).
-		Where(&Match{StartsAt: search.StartsAt, HomeTeamID: search.HomeTeamID, AwayTeamID: search.AwayTeamID}).
+		Preload("FootballApiFixtures").
+		Where(&Match{ID: search.ID, StartsAt: search.StartsAt, HomeTeamID: search.HomeTeamID, AwayTeamID: search.AwayTeamID}).
 		First(&match)
 
 	if result.Error != nil {

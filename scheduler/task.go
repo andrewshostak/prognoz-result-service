@@ -9,23 +9,30 @@ import (
 )
 
 type Task struct {
-	scheduler chrono.TaskScheduler
+	scheduler   chrono.TaskScheduler
+	activeTasks map[string]chrono.ScheduledTask
 }
 
 func NewTaskScheduler(scheduler chrono.TaskScheduler) *Task {
-	return &Task{scheduler: scheduler}
+	return &Task{scheduler: scheduler, activeTasks: map[string]chrono.ScheduledTask{}}
 }
 
-func (s *Task) Schedule(task func(ctx context.Context), period time.Duration, startTime time.Time) (*chrono.ScheduledRunnableTask, error) {
+func (s *Task) Schedule(key string, task func(ctx context.Context), period time.Duration, startTime time.Time) error {
 	scheduledTask, err := s.scheduler.ScheduleAtFixedRate(task, period, chrono.WithTime(startTime))
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to schedule a task: %w", err)
+		return fmt.Errorf("failed to schedule a task: %w", err)
 	}
 
-	return scheduledTask.(*chrono.ScheduledRunnableTask), nil
+	s.activeTasks[key] = scheduledTask
+
+	return nil
 }
 
-func (s *Task) Cancel(scheduledTask *chrono.ScheduledRunnableTask) {
-	scheduledTask.Cancel()
+func (s *Task) Cancel(key string) {
+	scheduledTask, ok := s.activeTasks[key]
+	if ok {
+		scheduledTask.Cancel()
+		delete(s.activeTasks, key)
+	}
 }

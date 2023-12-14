@@ -6,7 +6,6 @@ import (
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/repository"
-	"github.com/procyon-projects/chrono"
 )
 
 type AliasRepository interface {
@@ -42,6 +41,6 @@ type SubscriptionRepository interface {
 }
 
 type TaskScheduler interface {
-	Schedule(task func(ctx context.Context), period time.Duration, startTime time.Time) (*chrono.ScheduledRunnableTask, error)
-	Cancel(scheduledTask *chrono.ScheduledRunnableTask)
+	Schedule(key string, task func(ctx context.Context), period time.Duration, startTime time.Time) error
+	Cancel(key string)
 }

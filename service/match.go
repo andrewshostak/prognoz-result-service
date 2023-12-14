@@ -9,7 +9,6 @@ import (
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/errs"
 	"github.com/andrewshostak/result-service/repository"
-	"github.com/procyon-projects/chrono"
 )
 
 const dateFormat = "2006-01-02"
@@ -24,7 +23,6 @@ type MatchService struct {
 	footballAPIFixtureRepository FootballAPIFixtureRepository
 	footballAPIClient            FootballAPIClient
 	taskScheduler                TaskScheduler
-	location                     *time.Location
 }
 
 func NewMatchService(
@@ -33,7 +31,6 @@ func NewMatchService(
 	footballAPIFixtureRepository FootballAPIFixtureRepository,
 	footballAPIClient FootballAPIClient,
 	taskScheduler TaskScheduler,
-	location *time.Location,
 ) *MatchService {
 	return &MatchService{
 		aliasRepository:              aliasRepository,
@@ -41,7 +38,6 @@ func NewMatchService(
 		footballAPIFixtureRepository: footballAPIFixtureRepository,
 		footballAPIClient:            footballAPIClient,
 		taskScheduler:                taskScheduler,
-		location:                     location,
 	}
 }
 
@@ -73,12 +69,11 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 
 	fmt.Printf("match between %s and %s is not found in the database. making an attempt to find it in external api. \n", request.AliasHome, request.AliasAway)
 
-	date := request.StartsAt.Format(dateFormat)
+	date := request.StartsAt.UTC().Format(dateFormat)
 	season := uint(s.getSeason())
-	timezone := s.location.String()
 	response, err := s.footballAPIClient.SearchFixtures(ctx, client.FixtureSearch{
 		Season:   season,
-		Timezone: timezone,
+		Timezone: time.UTC.String(),
 		Date:     &date,
 		TeamID:   &aliasHome.FootballApiTeam.ID,
 	})
@@ -131,7 +126,6 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		aliasHome: *aliasHome,
 		aliasAway: *aliasAway,
 		season:    season,
-		timezone:  timezone,
 	}); err != nil {
 		return 0, fmt.Errorf("failed to schedule match result aquiring: %w", err)
 	}
@@ -182,7 +176,6 @@ func (s *MatchService) ScheduleMatchResultAcquiring(match Match) error {
 		aliasHome: match.HomeTeam.Aliases[0],
 		aliasAway: match.AwayTeam.Aliases[0],
 		season:    uint(s.getSeason()),
-		timezone:  s.location.String(),
 	}
 	return s.scheduleMatchResultAcquiring(params)
 }
@@ -224,23 +217,24 @@ func (s *MatchService) scheduleMatchResultAcquiring(params matchResultTaskParams
 
 	i := 1
 	ch := make(chan resultTaskChan)
-	search := client.FixtureSearch{Season: params.season, Timezone: params.timezone, ID: &params.fixture.ID}
+	search := client.FixtureSearch{Season: params.season, Timezone: time.UTC.String(), ID: &params.fixture.ID}
 
-	scheduledTask, err := s.taskScheduler.Schedule(s.getTaskFunc(i, ch, search, matchDetails), timeBetweenRetries, params.match.StartsAt.Add(firstAttemptDelay))
+	key := getTaskKey(params.match.ID, params.fixture.ID)
+	err := s.taskScheduler.Schedule(key, s.getTaskFunc(i, ch, search, matchDetails), timeBetweenRetries, params.match.StartsAt.Add(firstAttemptDelay))
 	if err != nil {
 		return fmt.Errorf("failed to schedule a task for %s: %w", matchDetails, err)
 	}
 
-	go s.handleTaskResult(context.Background(), scheduledTask, ch, params.fixture.ID, params.match.ID, matchDetails)
+	go s.handleTaskResult(context.Background(), ch, params.fixture.ID, params.match.ID, matchDetails)
 
 	return nil
 }
 
 // getSeason returns current year if current time is after June 1, otherwise previous year
 func (s *MatchService) getSeason() int {
-	now := time.Now().In(s.location)
+	now := time.Now()
 
-	seasonBound := time.Date(now.Year(), 6, 1, 0, 0, 0, 0, s.location)
+	seasonBound := time.Date(now.Year(), 6, 1, 0, 0, 0, 0, time.UTC)
 
 	if now.After(seasonBound) {
 		return now.Year()
@@ -294,14 +288,14 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 
 func (s *MatchService) handleTaskResult(
 	ctx context.Context,
-	scheduledTask *chrono.ScheduledRunnableTask,
 	ch <-chan resultTaskChan,
 	fixtureID uint,
 	matchID uint,
 	matchDetails string,
 ) {
 	result := <-ch
-	s.taskScheduler.Cancel(scheduledTask)
+	key := getTaskKey(matchID, fixtureID)
+	s.taskScheduler.Cancel(key)
 
 	fmt.Printf("scheduled task cancelled for %s \n", matchDetails)
 
@@ -332,6 +326,10 @@ func retriesLimitReached(i int) bool {
 	return i > numberOfRetries
 }
 
+func getTaskKey(matchID uint, fixtureID uint) string {
+	return fmt.Sprintf("%d-%d", matchID, fixtureID)
+}
+
 func writeError(matchDetails string, ch chan<- resultTaskChan) {
 	errMessage := fmt.Sprintf("retries limit (%d) reached for %s. cancelling", numberOfRetries, matchDetails)
 	fmt.Println(errMessage)
@@ -344,7 +342,6 @@ type matchResultTaskParams struct {
 	aliasHome Alias
 	aliasAway Alias
 	season    uint
-	timezone  string
 }
 
 type resultTaskChan struct {
