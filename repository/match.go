@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/andrewshostak/result-service/errs"
@@ -23,6 +24,19 @@ func (r *MatchRepository) Create(ctx context.Context, match Match) (*Match, erro
 	}
 
 	return &match, nil
+}
+
+func (r *MatchRepository) Delete(ctx context.Context, id uint) error {
+	result := r.db.WithContext(ctx).Delete(&Match{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("match doesn't exist")
+	}
+
+	return nil
 }
 
 func (r *MatchRepository) List(ctx context.Context, resultStatus ResultStatus) ([]Match, error) {

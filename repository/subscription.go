@@ -65,6 +65,19 @@ func (r *SubscriptionRepository) One(ctx context.Context, matchID uint, key stri
 	return &subscription, nil
 }
 
+func (r *SubscriptionRepository) List(ctx context.Context, matchID uint) ([]Subscription, error) {
+	var subscriptions []Subscription
+	result := r.db.WithContext(ctx).
+		Where("match_id = ?", matchID).
+		Find(&subscriptions)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return subscriptions, nil
+}
+
 func (r *SubscriptionRepository) ListUnNotified(ctx context.Context) ([]Subscription, error) {
 	var subscriptions []Subscription
 	result := r.db.WithContext(ctx).
