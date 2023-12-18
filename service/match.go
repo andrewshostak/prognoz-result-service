@@ -53,7 +53,7 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 	}
 
 	match, err := s.matchRepository.One(ctx, repository.Match{
-		StartsAt:   request.StartsAt,
+		StartsAt:   request.StartsAt.UTC(),
 		HomeTeamID: aliasHome.TeamID,
 		AwayTeamID: aliasAway.TeamID,
 	})

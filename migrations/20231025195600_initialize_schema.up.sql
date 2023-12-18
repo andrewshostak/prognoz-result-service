@@ -40,7 +40,7 @@ create table if not exists subscriptions (
     created_at timestamp not null,
     status subscription_status not null default 'pending',
     notified_at timestamp,
-    foreign key (match_id) references matches (id) on update cascade on delete restrict
+    foreign key (match_id) references matches (id) on update cascade on delete cascade
 );
 
 create table if not exists football_api_fixtures
@@ -48,7 +48,7 @@ create table if not exists football_api_fixtures
     id bigserial primary key,
     match_id bigserial,
     data jsonb not null,
-    foreign key (match_id) references matches (id) on update cascade on delete restrict
+    foreign key (match_id) references matches (id) on update cascade on delete cascade
 );
 
 commit;

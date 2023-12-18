@@ -14,6 +14,7 @@ type AliasRepository interface {
 
 type MatchRepository interface {
 	Create(ctx context.Context, match repository.Match) (*repository.Match, error)
+	Delete(ctx context.Context, id uint) error
 	List(ctx context.Context, resultStatus repository.ResultStatus) ([]repository.Match, error)
 	One(ctx context.Context, search repository.Match) (*repository.Match, error)
 	Update(ctx context.Context, id uint, resultStatus repository.ResultStatus) (*repository.Match, error)
@@ -36,6 +37,7 @@ type SubscriptionRepository interface {
 	Create(ctx context.Context, subscription repository.Subscription) (*repository.Subscription, error)
 	Delete(ctx context.Context, id uint) error
 	One(ctx context.Context, matchID uint, key string, baseURL string) (*repository.Subscription, error)
+	List(ctx context.Context, matchID uint) ([]repository.Subscription, error)
 	ListUnNotified(ctx context.Context) ([]repository.Subscription, error)
 	Update(ctx context.Context, id uint, subscription repository.Subscription) error
 }

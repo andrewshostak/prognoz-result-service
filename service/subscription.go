@@ -14,10 +14,11 @@ type SubscriptionService struct {
 	subscriptionRepository SubscriptionRepository
 	matchRepository        MatchRepository
 	aliasRepository        AliasRepository
+	taskScheduler          TaskScheduler
 }
 
-func NewSubscriptionService(subscriptionRepository SubscriptionRepository, matchRepository MatchRepository, aliasRepository AliasRepository) *SubscriptionService {
-	return &SubscriptionService{subscriptionRepository: subscriptionRepository, matchRepository: matchRepository, aliasRepository: aliasRepository}
+func NewSubscriptionService(subscriptionRepository SubscriptionRepository, matchRepository MatchRepository, aliasRepository AliasRepository, taskScheduler TaskScheduler) *SubscriptionService {
+	return &SubscriptionService{subscriptionRepository: subscriptionRepository, matchRepository: matchRepository, aliasRepository: aliasRepository, taskScheduler: taskScheduler}
 }
 
 func (s *SubscriptionService) Create(ctx context.Context, request CreateSubscriptionRequest) error {
@@ -26,7 +27,7 @@ func (s *SubscriptionService) Create(ctx context.Context, request CreateSubscrip
 		return fmt.Errorf("failed to get a match: %w", err)
 	}
 
-	if match.ResultStatus != "scheduled" {
+	if match.ResultStatus != repository.Scheduled {
 		return errors.New("match status is not scheduled")
 	}
 
@@ -56,7 +57,7 @@ func (s *SubscriptionService) Delete(ctx context.Context, request DeleteSubscrip
 	}
 
 	match, err := s.matchRepository.One(ctx, repository.Match{
-		StartsAt:   request.StartsAt,
+		StartsAt:   request.StartsAt.UTC(),
 		HomeTeamID: aliasHome.TeamID,
 		AwayTeamID: aliasAway.TeamID,
 	})
@@ -82,6 +83,30 @@ func (s *SubscriptionService) Delete(ctx context.Context, request DeleteSubscrip
 	if err != nil {
 		return fmt.Errorf("failed to delete subscription: %w", err)
 	}
+
+	otherSubscriptions, errList := s.subscriptionRepository.List(ctx, match.ID)
+	if errList != nil {
+		fmt.Printf("failed to check other subscriptions precence: %s", err.Error())
+		return nil
+	}
+
+	if len(otherSubscriptions) > 0 {
+		fmt.Printf("there are other subscriptions for the match %d. no need to cancle result acquiring task", match.ID)
+		return nil
+	}
+
+	errDelete := s.matchRepository.Delete(ctx, match.ID)
+	if errDelete != nil {
+		fmt.Printf("failed to delete match with id %d: %s", match.ID, errDelete.Error())
+		return nil
+	}
+
+	if len(match.FootballApiFixtures) < 1 {
+		fmt.Printf("failed to cancel scheduled task: match relation football api fixtures is not found")
+		return nil
+	}
+
+	s.taskScheduler.Cancel(fmt.Sprintf("%d-%d", match.ID, match.FootballApiFixtures[0].ID))
 
 	return nil
 }

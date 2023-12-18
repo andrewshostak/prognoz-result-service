@@ -7,7 +7,7 @@ import (
 )
 
 type CreateMatchRequest struct {
-	StartsAt  time.Time `binding:"required" json:"starts_at" time_format:"2006-01-02T15:04:05Z"`
+	StartsAt  time.Time `binding:"required" json:"starts_at" time_format:"2006-01-02T15:04:05Z07:00"`
 	AliasHome string    `binding:"required" json:"alias_home"`
 	AliasAway string    `binding:"required" json:"alias_away"`
 }
@@ -19,7 +19,7 @@ type CreateSubscriptionRequest struct {
 }
 
 type DeleteSubscriptionRequest struct {
-	StartsAt  time.Time `form:"starts_at" binding:"required" time_format:"2006-01-02T15:04:05Z"`
+	StartsAt  time.Time `form:"starts_at" binding:"required" time_format:"2006-01-02T15:04:05Z07:00"`
 	AliasHome string    `form:"alias_home" binding:"required"`
 	AliasAway string    `form:"alias_away" binding:"required"`
 	BaseURL   string    `form:"base_url" binding:"required"`
