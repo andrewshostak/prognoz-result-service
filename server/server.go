@@ -31,11 +31,11 @@ func StartServer() {
 	httpClient := http.Client{}
 	chronoTaskScheduler := chrono.NewDefaultTaskScheduler()
 
-	r.Use(middleware.Authorization(cfg.HashedAPIKeys, cfg.SecretKey))
+	r.Use(middleware.Authorization(cfg.App.HashedAPIKeys, cfg.App.SecretKey))
 
 	v1 := r.Group("/v1")
 
-	footballAPIClient := client.NewFootballAPIClient(&httpClient, cfg.FootballAPIBaseURL, cfg.RapidAPIKey)
+	footballAPIClient := client.NewFootballAPIClient(&httpClient, cfg.ExternalAPI.FootballAPIBaseURL, cfg.ExternalAPI.RapidAPIKey)
 	notifierClient := client.NewNotifierClient(&httpClient)
 
 	aliasRepository := repository.NewAliasRepository(db)
@@ -51,6 +51,9 @@ func StartServer() {
 		footballAPIFixtureRepository,
 		footballAPIClient,
 		taskScheduler,
+		cfg.Result.PollingMaxRetries,
+		cfg.Result.PollingInterval,
+		cfg.Result.PollingFirstAttemptDelay,
 	)
 	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository, aliasRepository, taskScheduler)
 	notifierService := service.NewNotifierService(subscriptionRepository, notifierClient)
@@ -70,17 +73,17 @@ func StartServer() {
 	notifierInitializer := initializer.NewNotifierInitializer(notifierService)
 	notifierInitializer.Start()
 
-	r.Run(fmt.Sprintf(":%s", cfg.Port))
+	r.Run(fmt.Sprintf(":%s", cfg.App.Port))
 }
 
-func establishDatabaseConnection(cfg config.Server) *gorm.DB {
+func establishDatabaseConnection(cfg config.Config) *gorm.DB {
 	connectionParams := fmt.Sprintf(
 		"host=%s user=%s password=%s port=%s database=%s sslmode=disable",
-		cfg.PGHost,
-		cfg.PGUser,
-		cfg.PGPassword,
-		cfg.PGPort,
-		cfg.PGDatabase,
+		cfg.PG.Host,
+		cfg.PG.User,
+		cfg.PG.Password,
+		cfg.PG.Port,
+		cfg.PG.Database,
 	)
 
 	db, err := gorm.Open(postgres.Open(connectionParams))
@@ -94,7 +97,7 @@ func establishDatabaseConnection(cfg config.Server) *gorm.DB {
 	}
 
 	driver, err := migratepg.WithInstance(sqlDb, &migratepg.Config{})
-	m, err := migrate.NewWithDatabaseInstance("file://./migrations", cfg.PGDatabase, driver)
+	m, err := migrate.NewWithDatabaseInstance("file://./migrations", cfg.PG.Database, driver)
 	if err != nil {
 		panic(err)
 	}

@@ -13,9 +13,6 @@ import (
 
 const dateFormat = "2006-01-02"
 const stateMatchFinished = "Match Finished"
-const numberOfRetries = 5
-const timeBetweenRetries = 15 * time.Minute
-const firstAttemptDelay = 115 * time.Minute
 
 type MatchService struct {
 	aliasRepository              AliasRepository
@@ -23,6 +20,9 @@ type MatchService struct {
 	footballAPIFixtureRepository FootballAPIFixtureRepository
 	footballAPIClient            FootballAPIClient
 	taskScheduler                TaskScheduler
+	pollingMaxRetries            uint
+	pollingInterval              time.Duration
+	pollingFirstAttemptDelay     time.Duration
 }
 
 func NewMatchService(
@@ -31,6 +31,9 @@ func NewMatchService(
 	footballAPIFixtureRepository FootballAPIFixtureRepository,
 	footballAPIClient FootballAPIClient,
 	taskScheduler TaskScheduler,
+	pollingMaxRetries uint,
+	pollingInterval time.Duration,
+	pollingFirstAttemptDelay time.Duration,
 ) *MatchService {
 	return &MatchService{
 		aliasRepository:              aliasRepository,
@@ -38,6 +41,9 @@ func NewMatchService(
 		footballAPIFixtureRepository: footballAPIFixtureRepository,
 		footballAPIClient:            footballAPIClient,
 		taskScheduler:                taskScheduler,
+		pollingMaxRetries:            pollingMaxRetries,
+		pollingInterval:              pollingInterval,
+		pollingFirstAttemptDelay:     pollingFirstAttemptDelay,
 	}
 }
 
@@ -220,7 +226,7 @@ func (s *MatchService) scheduleMatchResultAcquiring(params matchResultTaskParams
 	search := client.FixtureSearch{Season: params.season, Timezone: time.UTC.String(), ID: &params.fixture.ID}
 
 	key := getTaskKey(params.match.ID, params.fixture.ID)
-	err := s.taskScheduler.Schedule(key, s.getTaskFunc(i, ch, search, matchDetails), timeBetweenRetries, params.match.StartsAt.Add(firstAttemptDelay))
+	err := s.taskScheduler.Schedule(key, s.getTaskFunc(i, ch, search, matchDetails), s.pollingInterval, params.match.StartsAt.Add(s.pollingFirstAttemptDelay))
 	if err != nil {
 		return fmt.Errorf("failed to schedule a task for %s: %w", matchDetails, err)
 	}
@@ -252,8 +258,8 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 			fmt.Printf("received error when searching fixtures for match %s. cancelling. error: %s \n", matchDetails, err.Error())
 			i++
 
-			if retriesLimitReached(i) {
-				writeError(matchDetails, ch)
+			if s.retriesLimitReached(i) {
+				s.writeError(matchDetails, ch)
 			}
 			return
 		}
@@ -262,8 +268,8 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 			fmt.Printf("unexpected length of fixture search result for match %s \n", matchDetails)
 			i++
 
-			if retriesLimitReached(i) {
-				writeError(matchDetails, ch)
+			if s.retriesLimitReached(i) {
+				s.writeError(matchDetails, ch)
 			}
 			return
 		}
@@ -274,8 +280,8 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 			fmt.Printf("status is not finished (got \"%s\") for %s\n", fixture.Fixture.Status.Long, matchDetails)
 			i++
 
-			if retriesLimitReached(i) {
-				writeError(matchDetails, ch)
+			if s.retriesLimitReached(i) {
+				s.writeError(matchDetails, ch)
 			}
 			return
 		}
@@ -322,18 +328,18 @@ func (s *MatchService) handleTaskResult(
 	return
 }
 
-func retriesLimitReached(i int) bool {
-	return i > numberOfRetries
+func (s *MatchService) retriesLimitReached(i int) bool {
+	return i > int(s.pollingMaxRetries)
+}
+
+func (s *MatchService) writeError(matchDetails string, ch chan<- resultTaskChan) {
+	errMessage := fmt.Sprintf("retries limit (%d) reached for %s. cancelling", s.pollingMaxRetries, matchDetails)
+	fmt.Println(errMessage)
+	ch <- resultTaskChan{error: errors.New(errMessage)}
 }
 
 func getTaskKey(matchID uint, fixtureID uint) string {
 	return fmt.Sprintf("%d-%d", matchID, fixtureID)
-}
-
-func writeError(matchDetails string, ch chan<- resultTaskChan) {
-	errMessage := fmt.Sprintf("retries limit (%d) reached for %s. cancelling", numberOfRetries, matchDetails)
-	fmt.Println(errMessage)
-	ch <- resultTaskChan{error: errors.New(errMessage)}
 }
 
 type matchResultTaskParams struct {

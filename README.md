@@ -215,6 +215,9 @@ TODO
 
 #### Update match time
 
+##### Time update to the same date
+##### Time update to another date
+
 TODO
 
 ### Authorization
@@ -237,7 +240,8 @@ TODO
 5) How to back-fill aliases/football_api_matches ?
 
 ### List of improvements
-- move durations to env vars
+- ✓ move durations to env vars
+- fix concurrent map reads/writes
 - graceful shutdown
 - replace fmt.Printf with good logger
 - get two aliases on match creation endpoint concurrently
