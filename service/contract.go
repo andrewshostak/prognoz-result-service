@@ -6,6 +6,7 @@ import (
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/repository"
+	"github.com/rs/zerolog"
 )
 
 type AliasRepository interface {
@@ -45,4 +46,9 @@ type SubscriptionRepository interface {
 type TaskScheduler interface {
 	Schedule(key string, task func(ctx context.Context), period time.Duration, startTime time.Time) error
 	Cancel(key string)
+}
+
+type Logger interface {
+	Error() *zerolog.Event
+	Info() *zerolog.Event
 }

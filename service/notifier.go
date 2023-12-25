@@ -13,10 +13,11 @@ import (
 type NotifierService struct {
 	subscriptionRepository SubscriptionRepository
 	notifierClient         NotifierClient
+	logger                 Logger
 }
 
-func NewNotifierService(subscriptionRepository SubscriptionRepository, notifierClient NotifierClient) *NotifierService {
-	return &NotifierService{subscriptionRepository: subscriptionRepository, notifierClient: notifierClient}
+func NewNotifierService(subscriptionRepository SubscriptionRepository, notifierClient NotifierClient, logger Logger) *NotifierService {
+	return &NotifierService{subscriptionRepository: subscriptionRepository, notifierClient: notifierClient, logger: logger}
 }
 
 func (s *NotifierService) NotifySubscribers(ctx context.Context) error {
@@ -25,7 +26,7 @@ func (s *NotifierService) NotifySubscribers(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Printf("number of found subscriptions to notify: %d \n", len(subscriptions))
+	s.logger.Info().Msg(fmt.Sprintf("number of found subscriptions to notify: %d", len(subscriptions)))
 
 	mapped, err := fromRepositorySubscriptions(subscriptions)
 	if err != nil {
@@ -55,7 +56,7 @@ func (s *NotifierService) NotifySubscribers(ctx context.Context) error {
 		toUpdate := repository.Subscription{Status: repository.SuccessfulSub}
 		err := s.notifierClient.Notify(ctx, notification)
 		if err != nil {
-			fmt.Printf("failed to notify subscriber on url %s with the error: %s", subscriptions[i].Url, err.Error())
+			s.logger.Error().Err(err).Str("url", subscriptions[i].Url).Msg("failed to notify subscriber")
 			toUpdate.Status = repository.ErrorSub
 		}
 

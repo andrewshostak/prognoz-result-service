@@ -3,7 +3,10 @@ package server
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"os/signal"
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/config"
@@ -18,12 +21,29 @@ import (
 	migratepg "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/procyon-projects/chrono"
+	"github.com/rs/zerolog"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func StartServer() {
 	cfg := config.Parse()
+
+	file, err := getLogFile()
+	if err != nil {
+		panic(err)
+	}
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+
+	go func() {
+		<-c
+		file.Close()
+		os.Exit(0)
+	}()
+
+	logger := setupLogger(file)
 
 	r := gin.Default()
 
@@ -35,8 +55,8 @@ func StartServer() {
 
 	v1 := r.Group("/v1")
 
-	footballAPIClient := client.NewFootballAPIClient(&httpClient, cfg.ExternalAPI.FootballAPIBaseURL, cfg.ExternalAPI.RapidAPIKey)
-	notifierClient := client.NewNotifierClient(&httpClient)
+	footballAPIClient := client.NewFootballAPIClient(&httpClient, logger, cfg.ExternalAPI.FootballAPIBaseURL, cfg.ExternalAPI.RapidAPIKey)
+	notifierClient := client.NewNotifierClient(&httpClient, logger)
 
 	aliasRepository := repository.NewAliasRepository(db)
 	matchRepository := repository.NewMatchRepository(db)
@@ -51,12 +71,13 @@ func StartServer() {
 		footballAPIFixtureRepository,
 		footballAPIClient,
 		taskScheduler,
+		logger,
 		cfg.Result.PollingMaxRetries,
 		cfg.Result.PollingInterval,
 		cfg.Result.PollingFirstAttemptDelay,
 	)
-	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository, aliasRepository, taskScheduler)
-	notifierService := service.NewNotifierService(subscriptionRepository, notifierClient)
+	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository, aliasRepository, taskScheduler, logger)
+	notifierService := service.NewNotifierService(subscriptionRepository, notifierClient, logger)
 
 	matchHandler := handler.NewMatchHandler(matchService)
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
@@ -65,7 +86,7 @@ func StartServer() {
 	v1.DELETE("/subscriptions", subscriptionHandler.Delete)
 
 	ctx := context.Background()
-	matchResultScheduleInitializer := initializer.NewMatchResultScheduleInitializer(matchService)
+	matchResultScheduleInitializer := initializer.NewMatchResultScheduleInitializer(matchService, logger)
 	if err := matchResultScheduleInitializer.ReSchedule(ctx); err != nil {
 		panic(err)
 	}
@@ -108,4 +129,19 @@ func establishDatabaseConnection(cfg config.Config) *gorm.DB {
 	}
 
 	return db
+}
+
+func setupLogger(file io.Writer) *zerolog.Logger {
+	logger := zerolog.New(zerolog.MultiLevelWriter(file, os.Stderr)).With().Timestamp().Logger()
+	return &logger
+}
+
+func getLogFile() (*os.File, error) {
+	filename := "app.log"
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open %s file to write logs: %w", filename, err)
+	}
+
+	return file, nil
 }

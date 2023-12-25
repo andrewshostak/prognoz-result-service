@@ -243,7 +243,8 @@ TODO
 - ✓ move durations to env vars
 - fix concurrent map reads/writes
 - graceful shutdown
-- replace fmt.Printf with good logger
+- ✓ replace fmt.Printf with good logger
+- make gin and zerolog friends
 - get two aliases on match creation endpoint concurrently
 - notify subscribers concurrently
 - create match and football api fixture in transaction

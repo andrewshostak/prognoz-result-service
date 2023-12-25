@@ -15,12 +15,13 @@ const authHeader = "X-RapidAPI-Key"
 
 type FootballAPIClient struct {
 	httpClient *http.Client
+	logger     Logger
 	baseURL    string
 	apiKey     string
 }
 
-func NewFootballAPIClient(httpClient *http.Client, baseURL string, apiKey string) *FootballAPIClient {
-	return &FootballAPIClient{httpClient: httpClient, baseURL: baseURL, apiKey: apiKey}
+func NewFootballAPIClient(httpClient *http.Client, logger Logger, baseURL string, apiKey string) *FootballAPIClient {
+	return &FootballAPIClient{httpClient: httpClient, logger: logger, baseURL: baseURL, apiKey: apiKey}
 }
 
 func (c *FootballAPIClient) SearchFixtures(ctx context.Context, search FixtureSearch) (*FixturesResponse, error) {
@@ -59,7 +60,7 @@ func (c *FootballAPIClient) SearchFixtures(ctx context.Context, search FixtureSe
 	defer func() {
 		err := res.Body.Close()
 		if err != nil {
-			fmt.Printf("couldn't close response body: %v", err)
+			c.logger.Error().Err(err).Msg("couldn't close response body")
 		}
 	}()
 

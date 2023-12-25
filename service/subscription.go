@@ -15,10 +15,23 @@ type SubscriptionService struct {
 	matchRepository        MatchRepository
 	aliasRepository        AliasRepository
 	taskScheduler          TaskScheduler
+	logger                 Logger
 }
 
-func NewSubscriptionService(subscriptionRepository SubscriptionRepository, matchRepository MatchRepository, aliasRepository AliasRepository, taskScheduler TaskScheduler) *SubscriptionService {
-	return &SubscriptionService{subscriptionRepository: subscriptionRepository, matchRepository: matchRepository, aliasRepository: aliasRepository, taskScheduler: taskScheduler}
+func NewSubscriptionService(
+	subscriptionRepository SubscriptionRepository,
+	matchRepository MatchRepository,
+	aliasRepository AliasRepository,
+	taskScheduler TaskScheduler,
+	logger Logger,
+) *SubscriptionService {
+	return &SubscriptionService{
+		subscriptionRepository: subscriptionRepository,
+		matchRepository:        matchRepository,
+		aliasRepository:        aliasRepository,
+		taskScheduler:          taskScheduler,
+		logger:                 logger,
+	}
 }
 
 func (s *SubscriptionService) Create(ctx context.Context, request CreateSubscriptionRequest) error {
@@ -86,23 +99,23 @@ func (s *SubscriptionService) Delete(ctx context.Context, request DeleteSubscrip
 
 	otherSubscriptions, errList := s.subscriptionRepository.List(ctx, match.ID)
 	if errList != nil {
-		fmt.Printf("failed to check other subscriptions precence: %s", err.Error())
+		s.logger.Error().Err(err).Uint("match_id", match.ID).Msg("failed to check other subscriptions presence")
 		return nil
 	}
 
 	if len(otherSubscriptions) > 0 {
-		fmt.Printf("there are other subscriptions for the match %d. no need to cancle result acquiring task", match.ID)
+		s.logger.Info().Uint("match_id", match.ID).Msg("there are other subscriptions for the match. no need to cancel result acquiring task")
 		return nil
 	}
 
 	errDelete := s.matchRepository.Delete(ctx, match.ID)
 	if errDelete != nil {
-		fmt.Printf("failed to delete match with id %d: %s", match.ID, errDelete.Error())
+		s.logger.Error().Err(errDelete).Uint("match_id", match.ID).Msg("failed to delete match")
 		return nil
 	}
 
 	if len(match.FootballApiFixtures) < 1 {
-		fmt.Printf("failed to cancel scheduled task: match relation football api fixtures is not found")
+		s.logger.Error().Uint("match_id", match.ID).Msg("failed to cancel scheduled task: match relation football api fixtures is not found")
 		return nil
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/andrewshostak/result-service/service"
+	"github.com/rs/zerolog"
 )
 
 type MatchService interface {
@@ -14,4 +15,9 @@ type MatchService interface {
 
 type NotifierService interface {
 	NotifySubscribers(ctx context.Context) error
+}
+
+type Logger interface {
+	Error() *zerolog.Event
+	Info() *zerolog.Event
 }

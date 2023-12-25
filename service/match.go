@@ -9,6 +9,7 @@ import (
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/errs"
 	"github.com/andrewshostak/result-service/repository"
+	"github.com/rs/zerolog"
 )
 
 const dateFormat = "2006-01-02"
@@ -20,6 +21,7 @@ type MatchService struct {
 	footballAPIFixtureRepository FootballAPIFixtureRepository
 	footballAPIClient            FootballAPIClient
 	taskScheduler                TaskScheduler
+	logger                       Logger
 	pollingMaxRetries            uint
 	pollingInterval              time.Duration
 	pollingFirstAttemptDelay     time.Duration
@@ -31,6 +33,7 @@ func NewMatchService(
 	footballAPIFixtureRepository FootballAPIFixtureRepository,
 	footballAPIClient FootballAPIClient,
 	taskScheduler TaskScheduler,
+	logger Logger,
 	pollingMaxRetries uint,
 	pollingInterval time.Duration,
 	pollingFirstAttemptDelay time.Duration,
@@ -41,6 +44,7 @@ func NewMatchService(
 		footballAPIFixtureRepository: footballAPIFixtureRepository,
 		footballAPIClient:            footballAPIClient,
 		taskScheduler:                taskScheduler,
+		logger:                       logger,
 		pollingMaxRetries:            pollingMaxRetries,
 		pollingInterval:              pollingInterval,
 		pollingFirstAttemptDelay:     pollingFirstAttemptDelay,
@@ -73,7 +77,8 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		return 0, fmt.Errorf("unexpected error when getting a match: %w", err)
 	}
 
-	fmt.Printf("match between %s and %s is not found in the database. making an attempt to find it in external api. \n", request.AliasHome, request.AliasAway)
+	s.logger.Info().Str("alias_home", request.AliasHome).Str("alias_away", request.AliasAway).
+		Msg("match is not found in the database. making an attempt to find it in external api")
 
 	date := request.StartsAt.UTC().Format(dateFormat)
 	season := uint(s.getSeason())
@@ -211,27 +216,26 @@ func (s *MatchService) findAlias(ctx context.Context, alias string) (*Alias, err
 }
 
 func (s *MatchService) scheduleMatchResultAcquiring(params matchResultTaskParams) error {
-	matchDetails := fmt.Sprintf(
-		"match with id %d between %s and %s starting at %s",
-		params.match.ID,
-		params.aliasHome.Alias,
-		params.aliasAway.Alias,
-		params.match.StartsAt,
-	)
+	fields := matchLogFields{
+		matchID:   params.match.ID,
+		aliasHome: params.aliasHome.Alias,
+		aliasAway: params.aliasAway.Alias,
+		startsAt:  params.match.StartsAt,
+	}
 
-	fmt.Printf("scheduling a task for %s \n", matchDetails)
+	enrichLogWithMatchDetails(s.logger.Info(), fields).Msg("scheduling a task")
 
 	i := 1
 	ch := make(chan resultTaskChan)
 	search := client.FixtureSearch{Season: params.season, Timezone: time.UTC.String(), ID: &params.fixture.ID}
 
 	key := getTaskKey(params.match.ID, params.fixture.ID)
-	err := s.taskScheduler.Schedule(key, s.getTaskFunc(i, ch, search, matchDetails), s.pollingInterval, params.match.StartsAt.Add(s.pollingFirstAttemptDelay))
+	err := s.taskScheduler.Schedule(key, s.getTaskFunc(i, ch, search, fields), s.pollingInterval, params.match.StartsAt.Add(s.pollingFirstAttemptDelay))
 	if err != nil {
-		return fmt.Errorf("failed to schedule a task for %s: %w", matchDetails, err)
+		return fmt.Errorf("failed to schedule a task for match id %d: %w", fields.matchID, err)
 	}
 
-	go s.handleTaskResult(context.Background(), ch, params.fixture.ID, params.match.ID, matchDetails)
+	go s.handleTaskResult(context.Background(), ch, params.fixture.ID, params.match.ID, fields)
 
 	return nil
 }
@@ -249,13 +253,13 @@ func (s *MatchService) getSeason() int {
 	return now.AddDate(-1, 0, 0).Year()
 }
 
-func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search client.FixtureSearch, matchDetails string) func(c context.Context) {
+func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search client.FixtureSearch, matchDetails matchLogFields) func(c context.Context) {
 	return func(c context.Context) {
-		fmt.Printf("iteration %d for %s \n", i, matchDetails)
+		enrichLogWithMatchDetails(s.logger.Info(), matchDetails).Msg(fmt.Sprintf("iteration %d", i))
 
 		response, err := s.footballAPIClient.SearchFixtures(c, search)
 		if err != nil {
-			fmt.Printf("received error when searching fixtures for match %s. cancelling. error: %s \n", matchDetails, err.Error())
+			enrichLogWithMatchDetails(s.logger.Error(), matchDetails).Err(err).Msg("received error when searching fixtures for match. cancelling")
 			i++
 
 			if s.retriesLimitReached(i) {
@@ -265,7 +269,7 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 		}
 
 		if len(response.Response) < 1 {
-			fmt.Printf("unexpected length of fixture search result for match %s \n", matchDetails)
+			enrichLogWithMatchDetails(s.logger.Error(), matchDetails).Msg("unexpected length of fixture search result")
 			i++
 
 			if s.retriesLimitReached(i) {
@@ -277,7 +281,8 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 		fixture := fromClientFootballAPIFixture(response.Response[0])
 
 		if fixture.Fixture.Status.Long != stateMatchFinished {
-			fmt.Printf("status is not finished (got \"%s\") for %s\n", fixture.Fixture.Status.Long, matchDetails)
+			enrichLogWithMatchDetails(s.logger.Info(), matchDetails).Str("status", fixture.Fixture.Status.Long).
+				Msg("match status is not finished")
 			i++
 
 			if s.retriesLimitReached(i) {
@@ -286,7 +291,10 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 			return
 		}
 
-		fmt.Printf("received result %d:%d for the match %s. cancelling the task \n", fixture.Goals.Home, fixture.Goals.Away, matchDetails)
+		enrichLogWithMatchDetails(s.logger.Info(), matchDetails).
+			Uint("home", fixture.Goals.Home).
+			Uint("away", fixture.Goals.Away).
+			Msg("match result received. cancelling the task")
 		ch <- resultTaskChan{fixture: &fixture}
 		close(ch)
 	}
@@ -297,18 +305,20 @@ func (s *MatchService) handleTaskResult(
 	ch <-chan resultTaskChan,
 	fixtureID uint,
 	matchID uint,
-	matchDetails string,
+	matchDetails matchLogFields,
 ) {
 	result := <-ch
 	key := getTaskKey(matchID, fixtureID)
 	s.taskScheduler.Cancel(key)
 
-	fmt.Printf("scheduled task cancelled for %s \n", matchDetails)
+	enrichLogWithMatchDetails(s.logger.Info(), matchDetails).Msg("scheduled task cancelled")
 
 	if result.error != nil {
 		_, err := s.matchRepository.Update(ctx, matchID, repository.Error)
 		if err != nil {
-			fmt.Printf("failed to update result status to %s for %s: %s \n", repository.Error, matchDetails, err.Error())
+			enrichLogWithMatchDetails(s.logger.Error(), matchDetails).Err(err).
+				Str("result_status", string(repository.Error)).
+				Msg("failed to update result status")
 			return
 		}
 
@@ -316,12 +326,14 @@ func (s *MatchService) handleTaskResult(
 	}
 
 	if _, err := s.footballAPIFixtureRepository.Update(ctx, fixtureID, toRepositoryFootballAPIFixtureData(*result.fixture)); err != nil {
-		fmt.Printf("failed to update fixture for %s: %s \n", matchDetails, err.Error())
+		enrichLogWithMatchDetails(s.logger.Error(), matchDetails).Err(err).Msg("failed to update fixture")
 		return
 	}
 
 	if _, err := s.matchRepository.Update(ctx, matchID, repository.Successful); err != nil {
-		fmt.Printf("failed to update result status to %s for %s: %s \n", repository.Successful, matchDetails, err.Error())
+		enrichLogWithMatchDetails(s.logger.Error(), matchDetails).Err(err).
+			Str("result_status", string(repository.Successful)).
+			Msg("failed to update result status")
 		return
 	}
 
@@ -332,14 +344,28 @@ func (s *MatchService) retriesLimitReached(i int) bool {
 	return i > int(s.pollingMaxRetries)
 }
 
-func (s *MatchService) writeError(matchDetails string, ch chan<- resultTaskChan) {
-	errMessage := fmt.Sprintf("retries limit (%d) reached for %s. cancelling", s.pollingMaxRetries, matchDetails)
-	fmt.Println(errMessage)
+func (s *MatchService) writeError(matchDetails matchLogFields, ch chan<- resultTaskChan) {
+	errMessage := fmt.Sprintf("retries limit reached. cancelling")
+	enrichLogWithMatchDetails(s.logger.Error(), matchDetails).Uint("retries_limit", s.pollingMaxRetries).Msg(errMessage)
 	ch <- resultTaskChan{error: errors.New(errMessage)}
 }
 
 func getTaskKey(matchID uint, fixtureID uint) string {
 	return fmt.Sprintf("%d-%d", matchID, fixtureID)
+}
+
+func enrichLogWithMatchDetails(event *zerolog.Event, fields matchLogFields) *zerolog.Event {
+	return event.Uint("match_id", fields.matchID).
+		Str("alias_home", fields.aliasHome).
+		Str("alias_away", fields.aliasAway).
+		Str("starts_at", fields.startsAt.String())
+}
+
+type matchLogFields struct {
+	matchID   uint
+	aliasHome string
+	aliasAway string
+	startsAt  time.Time
 }
 
 type matchResultTaskParams struct {

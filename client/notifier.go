@@ -14,10 +14,11 @@ const notificationAuthHeader = "Authorization"
 
 type NotifierClient struct {
 	httpClient *http.Client
+	logger     Logger
 }
 
-func NewNotifierClient(httpClient *http.Client) *NotifierClient {
-	return &NotifierClient{httpClient: httpClient}
+func NewNotifierClient(httpClient *http.Client, logger Logger) *NotifierClient {
+	return &NotifierClient{httpClient: httpClient, logger: logger}
 }
 
 func (c *NotifierClient) Notify(ctx context.Context, notification Notification) error {
@@ -45,7 +46,7 @@ func (c *NotifierClient) Notify(ctx context.Context, notification Notification) 
 	defer func() {
 		err := res.Body.Close()
 		if err != nil {
-			fmt.Printf("couldn't close response body: %v", err)
+			c.logger.Error().Err(err).Msg("couldn't close response body")
 		}
 	}()
 
