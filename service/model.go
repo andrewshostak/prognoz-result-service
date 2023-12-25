@@ -160,7 +160,7 @@ func fromRepositoryMatch(m repository.Match) (*Match, error) {
 	if m.HomeTeam != nil {
 		aliases := make([]Alias, 0, len(m.HomeTeam.Aliases))
 		for _, alias := range m.HomeTeam.Aliases {
-			aliases = append(aliases, Alias{Alias: alias.Alias})
+			aliases = append(aliases, Alias{TeamID: alias.TeamID, Alias: alias.Alias})
 		}
 
 		homeTeam = &Team{ID: m.HomeTeam.ID, Aliases: aliases}
@@ -170,7 +170,7 @@ func fromRepositoryMatch(m repository.Match) (*Match, error) {
 	if m.AwayTeam != nil {
 		aliases := make([]Alias, 0, len(m.AwayTeam.Aliases))
 		for _, alias := range m.AwayTeam.Aliases {
-			aliases = append(aliases, Alias{Alias: alias.Alias})
+			aliases = append(aliases, Alias{TeamID: alias.TeamID, Alias: alias.Alias})
 		}
 
 		awayTeam = &Team{ID: m.AwayTeam.ID, Aliases: aliases}
