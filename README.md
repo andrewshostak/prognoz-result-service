@@ -235,9 +235,17 @@ TODO
 `result-service` => `football-api`
 1) An env variable `RAPID_API_KEY` is stored in env variables and attached to each request 
 
-### Open questions
+### Back-fill aliases data
 
-5) How to back-fill aliases/football_api_matches ?
+To back-fill aliases data a separate command is created. The command description:
+- Gets current season
+- Command has predefined list of league and country names (for example: Premier League - Ukraine, La Liga - Spain, etc.)
+- Calls `football-api`s `leagues` endpoint with `season` param
+- Extracts appropriate league ids from the response of `league` endpoint
+- Concurrently calls `teams` endpoint with the `season` and `league` param
+- For each team the command does the next actions in database 
+  - checks if `alias` already exists
+  - if not, creates a `team`, `alias`, `football_api_team` in transaction
 
 ### List of improvements
 - ✓ move durations to env vars
@@ -251,7 +259,18 @@ TODO
 - fix broken gorm errors checks
 - update football api fixture and match in transaction
 - add response bodies from API calls to error messages
-- add unit tests for services: match, notifier, subscription
+- configure ci
+- add unit tests for services: 
+  - match
+    - Create
+    - ✓ List
+    - ScheduleMatchResultAcquiring
+    - Update
+  - notifier
+    - NotifySubscribers
+  - subscription
+    - Create
+    - Delete
 - add linter
 - upgrade go version to 1.21
 

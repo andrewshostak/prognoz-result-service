@@ -42,12 +42,25 @@ type Status struct {
 	Long  string `json:"long"`
 }
 
+type TeamsResponse struct {
+	Response []TeamsResult `json:"response"`
+}
+
+type TeamsResult struct {
+	Team Team `json:"team"`
+}
+
 type FixtureSearch struct {
 	Season   uint
 	Timezone string
 	Date     *string
 	TeamID   *uint
 	ID       *uint
+}
+
+type TeamsSearch struct {
+	Season uint
+	League uint
 }
 
 type Notification struct {

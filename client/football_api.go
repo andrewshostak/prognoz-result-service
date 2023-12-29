@@ -10,7 +10,10 @@ import (
 	"github.com/andrewshostak/result-service/errs"
 )
 
-const fixturesPath = "/v3/fixtures"
+const (
+	fixturesPath = "/v3/fixtures"
+	teamsPath    = "/v3/teams"
+)
 const authHeader = "X-RapidAPI-Key"
 
 type FootballAPIClient struct {
@@ -74,4 +77,44 @@ func (c *FootballAPIClient) SearchFixtures(ctx context.Context, search FixtureSe
 	}
 
 	return nil, fmt.Errorf("%s: %w", fmt.Sprintf("failed to get fixtures, status %d", res.StatusCode), errs.ErrUnexpectedAPIFootballStatusCode)
+}
+
+func (c *FootballAPIClient) SearchTeams(ctx context.Context, search TeamsSearch) (*TeamsResponse, error) {
+	url := c.baseURL + teamsPath
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request to get teams: %w", err)
+	}
+
+	q := req.URL.Query()
+	q.Add("season", strconv.Itoa(int(search.Season)))
+	q.Add("league", strconv.Itoa(int(search.League)))
+
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Set(authHeader, c.apiKey)
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request to get teams: %w", err)
+	}
+
+	defer func() {
+		err := res.Body.Close()
+		if err != nil {
+			c.logger.Error().Err(err).Msg("couldn't close response body")
+		}
+	}()
+
+	if res.StatusCode == http.StatusOK {
+		var body TeamsResponse
+		if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+			return nil, fmt.Errorf("failed to decode get teams response body: %w", err)
+		}
+
+		return &body, nil
+	}
+
+	return nil, fmt.Errorf("%s: %w", fmt.Sprintf("failed to get teams, status %d", res.StatusCode), errs.ErrUnexpectedAPIFootballStatusCode)
 }
