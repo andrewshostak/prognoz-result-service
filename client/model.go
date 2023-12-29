@@ -50,6 +50,24 @@ type TeamsResult struct {
 	Team Team `json:"team"`
 }
 
+type LeaguesResponse struct {
+	Response []LeagueResult `json:"response"`
+}
+
+type LeagueResult struct {
+	League  League  `json:"league"`
+	Country Country `json:"country"`
+}
+
+type League struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+type Country struct {
+	Name string `json:"name"`
+}
+
 type FixtureSearch struct {
 	Season   uint
 	Timezone string
