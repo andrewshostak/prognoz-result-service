@@ -273,4 +273,5 @@ To back-fill aliases data a separate command is created. The command description
     - Delete
 - add linter
 - upgrade go version to 1.21
+- use generics for football api client responses
 

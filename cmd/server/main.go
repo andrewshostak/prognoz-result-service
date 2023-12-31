@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"context"
@@ -22,11 +22,24 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/procyon-projects/chrono"
 	"github.com/rs/zerolog"
+	"github.com/spf13/cobra"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-func StartServer() {
+func main() {
+	rootCmd := &cobra.Command{
+		Use:   "run",
+		Short: "Server starts running the server",
+		Run:   StartServer,
+	}
+
+	if err := rootCmd.Execute(); err != nil {
+		panic(err)
+	}
+}
+
+func StartServer(_ *cobra.Command, _ []string) {
 	cfg := config.Parse()
 
 	file, err := getLogFile()

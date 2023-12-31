@@ -26,8 +26,6 @@ func (s *NotifierService) NotifySubscribers(ctx context.Context) error {
 		return err
 	}
 
-	s.logger.Info().Msg(fmt.Sprintf("number of found subscriptions to notify: %d", len(subscriptions)))
-
 	mapped, err := fromRepositorySubscriptions(subscriptions)
 	if err != nil {
 		return fmt.Errorf("failed to map repository subscriptions: %w", err)
@@ -45,10 +43,12 @@ func (s *NotifierService) NotifySubscribers(ctx context.Context) error {
 		return errors.New(fmt.Sprintf("football api fixtures of the match with id %d is not found", mapped[0].MatchID))
 	}
 
+	s.logger.Info().Msg(fmt.Sprintf("number of found subscriptions to notify: %d", len(mapped)))
+
 	for i := range subscriptions {
 		notification := client.Notification{
-			Url:  subscriptions[i].Url,
-			Key:  subscriptions[i].Key,
+			Url:  mapped[i].Url,
+			Key:  mapped[i].Key,
 			Home: mapped[0].Match.FootballApiFixtures[0].Home,
 			Away: mapped[0].Match.FootballApiFixtures[0].Away,
 		}
