@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,27 +10,24 @@ import (
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/config"
 	"github.com/andrewshostak/result-service/handler"
+	"github.com/andrewshostak/result-service/helper"
 	"github.com/andrewshostak/result-service/initializer"
+	loggerinternal "github.com/andrewshostak/result-service/logger"
 	"github.com/andrewshostak/result-service/middleware"
 	"github.com/andrewshostak/result-service/repository"
 	"github.com/andrewshostak/result-service/scheduler"
 	"github.com/andrewshostak/result-service/service"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-migrate/migrate/v4"
-	migratepg "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/procyon-projects/chrono"
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func main() {
 	rootCmd := &cobra.Command{
 		Use:   "run",
 		Short: "Server starts running the server",
-		Run:   StartServer,
+		Run:   startServer,
 	}
 
 	if err := rootCmd.Execute(); err != nil {
@@ -39,10 +35,10 @@ func main() {
 	}
 }
 
-func StartServer(_ *cobra.Command, _ []string) {
+func startServer(_ *cobra.Command, _ []string) {
 	cfg := config.Parse()
 
-	file, err := getLogFile()
+	file, err := loggerinternal.GetLogFile()
 	if err != nil {
 		panic(err)
 	}
@@ -56,11 +52,11 @@ func StartServer(_ *cobra.Command, _ []string) {
 		os.Exit(0)
 	}()
 
-	logger := setupLogger(file)
+	logger := loggerinternal.SetupLogger(file)
 
 	r := gin.Default()
 
-	db := establishDatabaseConnection(cfg)
+	db := repository.EstablishDatabaseConnection(cfg)
 	httpClient := http.Client{}
 	chronoTaskScheduler := chrono.NewDefaultTaskScheduler()
 
@@ -77,6 +73,7 @@ func StartServer(_ *cobra.Command, _ []string) {
 	subscriptionRepository := repository.NewSubscriptionRepository(db)
 
 	taskScheduler := scheduler.NewTaskScheduler(chronoTaskScheduler)
+	seasonHelper := helper.NewSeasonHelper()
 
 	matchService := service.NewMatchService(
 		aliasRepository,
@@ -84,6 +81,7 @@ func StartServer(_ *cobra.Command, _ []string) {
 		footballAPIFixtureRepository,
 		footballAPIClient,
 		taskScheduler,
+		seasonHelper,
 		logger,
 		cfg.Result.PollingMaxRetries,
 		cfg.Result.PollingInterval,
@@ -108,53 +106,4 @@ func StartServer(_ *cobra.Command, _ []string) {
 	notifierInitializer.Start()
 
 	r.Run(fmt.Sprintf(":%s", cfg.App.Port))
-}
-
-func establishDatabaseConnection(cfg config.Config) *gorm.DB {
-	connectionParams := fmt.Sprintf(
-		"host=%s user=%s password=%s port=%s database=%s sslmode=disable",
-		cfg.PG.Host,
-		cfg.PG.User,
-		cfg.PG.Password,
-		cfg.PG.Port,
-		cfg.PG.Database,
-	)
-
-	db, err := gorm.Open(postgres.Open(connectionParams))
-	if err != nil {
-		panic(err)
-	}
-
-	sqlDb, err := db.DB()
-	if err != nil {
-		panic(err)
-	}
-
-	driver, err := migratepg.WithInstance(sqlDb, &migratepg.Config{})
-	m, err := migrate.NewWithDatabaseInstance("file://./migrations", cfg.PG.Database, driver)
-	if err != nil {
-		panic(err)
-	}
-
-	err = m.Up()
-	if err != nil && err != migrate.ErrNoChange {
-		panic(err)
-	}
-
-	return db
-}
-
-func setupLogger(file io.Writer) *zerolog.Logger {
-	logger := zerolog.New(zerolog.MultiLevelWriter(file, os.Stderr)).With().Timestamp().Logger()
-	return &logger
-}
-
-func getLogFile() (*os.File, error) {
-	filename := "app.log"
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open %s file to write logs: %w", filename, err)
-	}
-
-	return file, nil
 }

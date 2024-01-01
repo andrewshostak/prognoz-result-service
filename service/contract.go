@@ -48,6 +48,10 @@ type TaskScheduler interface {
 	Cancel(key string)
 }
 
+type SeasonHelper interface {
+	CurrentSeason() int
+}
+
 type Logger interface {
 	Error() *zerolog.Event
 	Info() *zerolog.Event

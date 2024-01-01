@@ -21,6 +21,7 @@ type MatchService struct {
 	footballAPIFixtureRepository FootballAPIFixtureRepository
 	footballAPIClient            FootballAPIClient
 	taskScheduler                TaskScheduler
+	seasonHelper                 SeasonHelper
 	logger                       Logger
 	pollingMaxRetries            uint
 	pollingInterval              time.Duration
@@ -33,6 +34,7 @@ func NewMatchService(
 	footballAPIFixtureRepository FootballAPIFixtureRepository,
 	footballAPIClient FootballAPIClient,
 	taskScheduler TaskScheduler,
+	seasonHelper SeasonHelper,
 	logger Logger,
 	pollingMaxRetries uint,
 	pollingInterval time.Duration,
@@ -44,6 +46,7 @@ func NewMatchService(
 		footballAPIFixtureRepository: footballAPIFixtureRepository,
 		footballAPIClient:            footballAPIClient,
 		taskScheduler:                taskScheduler,
+		seasonHelper:                 seasonHelper,
 		logger:                       logger,
 		pollingMaxRetries:            pollingMaxRetries,
 		pollingInterval:              pollingInterval,
@@ -81,7 +84,7 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		Msg("match is not found in the database. making an attempt to find it in external api")
 
 	date := request.StartsAt.UTC().Format(dateFormat)
-	season := uint(s.getSeason())
+	season := uint(s.seasonHelper.CurrentSeason())
 	response, err := s.footballAPIClient.SearchFixtures(ctx, client.FixtureSearch{
 		Season:   season,
 		Timezone: time.UTC.String(),
@@ -186,7 +189,7 @@ func (s *MatchService) ScheduleMatchResultAcquiring(match Match) error {
 		fixture:   match.FootballApiFixtures[0],
 		aliasHome: match.HomeTeam.Aliases[0],
 		aliasAway: match.AwayTeam.Aliases[0],
-		season:    uint(s.getSeason()),
+		season:    uint(s.seasonHelper.CurrentSeason()),
 	}
 	return s.scheduleMatchResultAcquiring(params)
 }
@@ -238,19 +241,6 @@ func (s *MatchService) scheduleMatchResultAcquiring(params matchResultTaskParams
 	go s.handleTaskResult(context.Background(), ch, params.fixture.ID, params.match.ID, fields)
 
 	return nil
-}
-
-// getSeason returns current year if current time is after June 1, otherwise previous year
-func (s *MatchService) getSeason() int {
-	now := time.Now()
-
-	seasonBound := time.Date(now.Year(), 6, 1, 0, 0, 0, 0, time.UTC)
-
-	if now.After(seasonBound) {
-		return now.Year()
-	}
-
-	return now.AddDate(-1, 0, 0).Year()
 }
 
 func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search client.FixtureSearch, matchDetails matchLogFields) func(c context.Context) {
