@@ -79,6 +79,11 @@ type Data struct {
 	Goals   Goals         `json:"goals"`
 }
 
+type LeagueData struct {
+	League  League
+	Country Country
+}
+
 type Fixture struct {
 	ID     uint   `json:"id"`
 	Status Status `json:"status"`
@@ -103,6 +108,15 @@ type Goals struct {
 type Status struct {
 	Short string `json:"short"`
 	Long  string `json:"long"`
+}
+
+type League struct {
+	ID   uint
+	Name string
+}
+
+type Country struct {
+	Name string
 }
 
 func fromRepositoryFootballAPIFixture(f repository.FootballApiFixture) (*FootballAPIFixture, error) {
@@ -143,6 +157,16 @@ func fromClientFootballAPIFixture(c client.Result) Data {
 			Home: c.Goals.Home,
 			Away: c.Goals.Away,
 		},
+	}
+}
+
+func fromClientFootballAPILeague(l client.LeagueResult) LeagueData {
+	return LeagueData{
+		League: League{
+			ID:   l.League.ID,
+			Name: l.League.Name,
+		},
+		Country: Country{Name: l.Country.Name},
 	}
 }
 
