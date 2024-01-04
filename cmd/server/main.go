@@ -47,7 +47,7 @@ func startServer(_ *cobra.Command, _ []string) {
 
 	go func() {
 		<-c
-		file.Close()
+		_ = file.Close()
 		os.Exit(0)
 	}()
 
@@ -102,5 +102,5 @@ func startServer(_ *cobra.Command, _ []string) {
 	notifierInitializer := initializer.NewNotifierInitializer(notifierService)
 	notifierInitializer.Start()
 
-	r.Run(fmt.Sprintf(":%s", cfg.App.Port))
+	_ = r.Run(fmt.Sprintf(":%s", cfg.App.Port))
 }

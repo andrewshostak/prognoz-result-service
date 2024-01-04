@@ -28,7 +28,7 @@ func main() {
 	}
 }
 
-func run(cmd *cobra.Command, args []string) {
+func run(cmd *cobra.Command, _ []string) {
 	season, err := cmd.Flags().GetUint("season")
 	if err != nil {
 		panic(err)
