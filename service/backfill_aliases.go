@@ -8,32 +8,26 @@ import (
 type BackfillAliasesService struct {
 	aliasRepository   AliasRepository
 	footballAPIClient FootballAPIClient
-	seasonHelper      SeasonHelper
 	logger            Logger
 }
 
 func NewBackfillAliasesService(
 	aliasRepository AliasRepository,
 	footballAPIClient FootballAPIClient,
-	seasonHelper SeasonHelper,
 	logger Logger,
 ) *BackfillAliasesService {
 	return &BackfillAliasesService{
 		aliasRepository:   aliasRepository,
 		footballAPIClient: footballAPIClient,
-		seasonHelper:      seasonHelper,
 		logger:            logger,
 	}
 }
 
-func (s *BackfillAliasesService) Backfill(ctx context.Context) error {
+func (s *BackfillAliasesService) Backfill(ctx context.Context, season uint) error {
 	s.logger.Info().Msg("starting aliases backfill")
 
-	season := s.seasonHelper.CurrentSeason()
-
-	s.logger.Info().Int("season", season).Msg("searching leagues")
-
-	result, err := s.footballAPIClient.SearchLeagues(ctx, uint(season))
+	s.logger.Info().Uint("season", season).Msg("searching leagues")
+	result, err := s.footballAPIClient.SearchLeagues(ctx, season)
 	if err != nil {
 		return fmt.Errorf("failed to search leagues: %w", err)
 	}

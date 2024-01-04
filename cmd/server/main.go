@@ -10,7 +10,6 @@ import (
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/config"
 	"github.com/andrewshostak/result-service/handler"
-	"github.com/andrewshostak/result-service/helper"
 	"github.com/andrewshostak/result-service/initializer"
 	loggerinternal "github.com/andrewshostak/result-service/logger"
 	"github.com/andrewshostak/result-service/middleware"
@@ -73,7 +72,6 @@ func startServer(_ *cobra.Command, _ []string) {
 	subscriptionRepository := repository.NewSubscriptionRepository(db)
 
 	taskScheduler := scheduler.NewTaskScheduler(chronoTaskScheduler)
-	seasonHelper := helper.NewSeasonHelper()
 
 	matchService := service.NewMatchService(
 		aliasRepository,
@@ -81,7 +79,6 @@ func startServer(_ *cobra.Command, _ []string) {
 		footballAPIFixtureRepository,
 		footballAPIClient,
 		taskScheduler,
-		seasonHelper,
 		logger,
 		cfg.Result.PollingMaxRetries,
 		cfg.Result.PollingInterval,

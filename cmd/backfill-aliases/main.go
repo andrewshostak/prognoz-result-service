@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/config"
-	"github.com/andrewshostak/result-service/helper"
 	loggerinternal "github.com/andrewshostak/result-service/logger"
 	"github.com/andrewshostak/result-service/repository"
 	"github.com/andrewshostak/result-service/service"
@@ -17,15 +17,27 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use:   "run",
 		Short: "Backfills aliases",
+		Args:  cobra.ExactArgs(1),
 		Run:   run,
 	}
+
+	rootCmd.Flags().Uint("season", 0, "query param in leagues endpoint of football-api")
 
 	if err := rootCmd.Execute(); err != nil {
 		panic(err)
 	}
 }
 
-func run(_ *cobra.Command, _ []string) {
+func run(cmd *cobra.Command, args []string) {
+	season, err := cmd.Flags().GetUint("season")
+	if err != nil {
+		panic(err)
+	}
+
+	if season == 0 {
+		panic(errors.New("season flag cannot be empty"))
+	}
+
 	cfg := config.Parse()
 
 	file, err := loggerinternal.GetLogFile()
@@ -41,15 +53,13 @@ func run(_ *cobra.Command, _ []string) {
 
 	aliasRepository := repository.NewAliasRepository(db)
 
-	seasonHelper := helper.NewSeasonHelper()
-
 	footballAPIClient := client.NewFootballAPIClient(&httpClient, logger, cfg.ExternalAPI.FootballAPIBaseURL, cfg.ExternalAPI.RapidAPIKey)
 
-	backfillAliasesService := service.NewBackfillAliasesService(aliasRepository, footballAPIClient, seasonHelper, logger)
+	backfillAliasesService := service.NewBackfillAliasesService(aliasRepository, footballAPIClient, logger)
 
 	ctx := context.Background()
 
-	err = backfillAliasesService.Backfill(ctx)
+	err = backfillAliasesService.Backfill(ctx, season)
 	if err != nil {
 		panic(err)
 	}
