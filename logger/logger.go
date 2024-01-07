@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog"
 )
 
-func SetupLogger(file io.Writer) *zerolog.Logger {
-	logger := zerolog.New(zerolog.MultiLevelWriter(file, os.Stderr)).With().Timestamp().Logger()
+func SetupLogger(writers ...io.Writer) *zerolog.Logger {
+	writers = append(writers, os.Stderr)
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+	logger := zerolog.New(zerolog.MultiLevelWriter(writers...)).With().Timestamp().Logger()
 	return &logger
 }
 

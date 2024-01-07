@@ -29,6 +29,7 @@ type FootballAPIFixtureRepository interface {
 type FootballAPIClient interface {
 	SearchFixtures(ctx context.Context, search client.FixtureSearch) (*client.FixturesResponse, error)
 	SearchLeagues(ctx context.Context, season uint) (*client.LeaguesResponse, error)
+	SearchTeams(ctx context.Context, search client.TeamsSearch) (*client.TeamsResponse, error)
 }
 
 type NotifierClient interface {

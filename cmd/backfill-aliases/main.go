@@ -40,12 +40,7 @@ func run(cmd *cobra.Command, _ []string) {
 
 	cfg := config.Parse()
 
-	file, err := loggerinternal.GetLogFile()
-	if err != nil {
-		panic(err)
-	}
-
-	logger := loggerinternal.SetupLogger(file)
+	logger := loggerinternal.SetupLogger()
 
 	httpClient := http.Client{}
 

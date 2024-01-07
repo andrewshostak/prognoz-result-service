@@ -170,6 +170,22 @@ func fromClientFootballAPILeague(l client.LeagueResult) LeagueData {
 	}
 }
 
+func fromClientFootballAPITeam(t client.TeamsResult) TeamExternal {
+	return TeamExternal{
+		ID:   t.Team.ID,
+		Name: t.Team.Name,
+	}
+}
+
+func fromClientFootballAPITeams(t []client.TeamsResult) []TeamExternal {
+	mapped := make([]TeamExternal, 0, len(t))
+	for i := range t {
+		mapped = append(mapped, fromClientFootballAPITeam(t[i]))
+	}
+
+	return mapped
+}
+
 func fromRepositoryMatch(m repository.Match) (*Match, error) {
 	fixtures := make([]FootballAPIFixture, 0, len(m.FootballApiFixtures))
 	for _, fixture := range m.FootballApiFixtures {

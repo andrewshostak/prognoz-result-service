@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"sync"
+
+	"github.com/andrewshostak/result-service/client"
 )
 
 type BackfillAliasesService struct {
@@ -25,8 +28,8 @@ func NewBackfillAliasesService(
 
 func (s *BackfillAliasesService) Backfill(ctx context.Context, season uint) error {
 	s.logger.Info().Msg("starting aliases backfill")
-
 	s.logger.Info().Uint("season", season).Msg("searching leagues")
+
 	result, err := s.footballAPIClient.SearchLeagues(ctx, season)
 	if err != nil {
 		return fmt.Errorf("failed to search leagues: %w", err)
@@ -43,7 +46,62 @@ func (s *BackfillAliasesService) Backfill(ctx context.Context, season uint) erro
 
 	s.logger.Info().Int("length", len(leagues)).Msg("leagues filtering is done")
 
+	_, err = s.getTeams(ctx, leagues, season)
+	if err != nil {
+		return fmt.Errorf("failed to get teams: %w", err)
+	}
+
 	return nil
+}
+
+func (s *BackfillAliasesService) getTeams(ctx context.Context, leagues []LeagueData, season uint) (map[LeagueData][]TeamExternal, error) {
+	const numberOfWorkers = 3
+	jobs := make(chan struct{}, numberOfWorkers)
+	wg := sync.WaitGroup{}
+	var mutex = &sync.RWMutex{}
+
+	teams := map[LeagueData][]TeamExternal{}
+
+	for i := range leagues {
+		wg.Add(1)
+		jobs <- struct{}{}
+
+		s.logger.Info().
+			Int("number", i).
+			Str("league_name", leagues[i].League.Name).
+			Str("country_name", leagues[i].Country.Name).
+			Msg("iteration")
+
+		go func(ctx context.Context, league LeagueData) {
+			result, err := s.footballAPIClient.SearchTeams(ctx, client.TeamsSearch{Season: season, League: league.League.ID})
+			<-jobs
+
+			if err != nil {
+				s.logger.Error().Err(err).
+					Str("league_name", league.League.Name).
+					Str("country_name", league.Country.Name).
+					Msg("failed to get teams")
+				return
+			}
+
+			s.logger.Info().
+				Str("league_name", league.League.Name).
+				Str("country_name", league.Country.Name).
+				Msg("successfully get teams")
+
+			mutex.Lock()
+			teams[league] = fromClientFootballAPITeams(result.Response)
+			mutex.Unlock()
+
+			defer wg.Done()
+		}(ctx, leagues[i])
+	}
+
+	wg.Wait()
+
+	s.logger.Info().Int("number", len(teams)).Msg("received results")
+
+	return teams, nil
 }
 
 func (s *BackfillAliasesService) filterOutLeagues(allLeagues []LeagueData, includedLeagues []league) []LeagueData {
@@ -82,18 +140,18 @@ func (s *BackfillAliasesService) getIncludedLeagues() []league {
 		{name: "Primeira Liga", country: "Portugal"},
 		{name: "Jupiler Pro League", country: "Belgium"},
 		// only intersected with euro cups: Champions/Europa/Conference League
-		{name: "Süper Lig", country: "Turkey", euroCupsIntersected: true},
-		{name: "Premiership", country: "Scotland", euroCupsIntersected: true},
-		{name: "Czech Liga", country: "Czech-Republic", euroCupsIntersected: true},
-		{name: "Super League", country: "Switzerland", euroCupsIntersected: true},
-		{name: "Bundesliga", country: "Austria", euroCupsIntersected: true},
-		{name: "Superliga", country: "Denmark", euroCupsIntersected: true},
-		{name: "Eliteserien", country: "Norway", euroCupsIntersected: true},
-		{name: "Ligat Ha'al", country: "Israel", euroCupsIntersected: true},
-		{name: "Super League 1", country: "Greece", euroCupsIntersected: true},
-		{name: "Super Liga", country: "Serbia", euroCupsIntersected: true},
-		{name: "Ekstraklasa", country: "Poland", euroCupsIntersected: true},
-		{name: "HNL", country: "Croatia", euroCupsIntersected: true},
+		//{name: "Süper Lig", country: "Turkey"},
+		//{name: "Premiership", country: "Scotland"},
+		//{name: "Czech Liga", country: "Czech-Republic"},
+		//{name: "Super League", country: "Switzerland"},
+		//{name: "Bundesliga", country: "Austria"},
+		//{name: "Superliga", country: "Denmark"},
+		//{name: "Eliteserien", country: "Norway"},
+		//{name: "Ligat Ha'al", country: "Israel"},
+		//{name: "Super League 1", country: "Greece"},
+		//{name: "Super Liga", country: "Serbia"},
+		//{name: "Ekstraklasa", country: "Poland"},
+		//{name: "HNL", country: "Croatia"},
 	}
 }
 
@@ -108,7 +166,6 @@ func isIncludedLeague(league LeagueData, includedLeagues []league) bool {
 }
 
 type league struct {
-	name                string
-	country             string
-	euroCupsIntersected bool
+	name    string
+	country string
 }
