@@ -46,15 +46,17 @@ func (s *BackfillAliasesService) Backfill(ctx context.Context, season uint) erro
 
 	s.logger.Info().Int("length", len(leagues)).Msg("leagues filtering is done")
 
-	_, err = s.getTeams(ctx, leagues, season)
+	leaguesTeams, err := s.getLeaguesTeams(ctx, leagues, season)
 	if err != nil {
 		return fmt.Errorf("failed to get teams: %w", err)
 	}
 
+	s.saveTeams(ctx, leaguesTeams)
+
 	return nil
 }
 
-func (s *BackfillAliasesService) getTeams(ctx context.Context, leagues []LeagueData, season uint) (map[LeagueData][]TeamExternal, error) {
+func (s *BackfillAliasesService) getLeaguesTeams(ctx context.Context, leagues []LeagueData, season uint) (map[LeagueData][]TeamExternal, error) {
 	const numberOfWorkers = 3
 	jobs := make(chan struct{}, numberOfWorkers)
 	wg := sync.WaitGroup{}
@@ -153,6 +155,54 @@ func (s *BackfillAliasesService) getIncludedLeagues() []league {
 		//{name: "Ekstraklasa", country: "Poland"},
 		//{name: "HNL", country: "Croatia"},
 	}
+}
+
+func (s *BackfillAliasesService) saveTeams(ctx context.Context, leaguesTeams map[LeagueData][]TeamExternal) {
+	const numberOfWorkers = 3
+	jobs := make(chan struct{}, numberOfWorkers)
+	wg := sync.WaitGroup{}
+
+	for league, teams := range leaguesTeams {
+		wg.Add(1)
+		jobs <- struct{}{}
+
+		go func(league LeagueData, teams []TeamExternal) {
+			numberOfSaved, numberOfExisted := 0, 0
+			for i := range teams {
+				_, err := s.aliasRepository.Find(ctx, teams[i].Name)
+				if err == nil {
+					s.logger.Info().
+						Str("alias", teams[i].Name).
+						Uint("football_api_team_id", teams[i].ID).
+						Msg("alias already exists")
+					numberOfExisted++
+					continue
+				}
+
+				errTrx := s.aliasRepository.SaveInTrx(ctx, teams[i].Name, teams[i].ID)
+				if errTrx != nil {
+					s.logger.Error().
+						Str("alias", teams[i].Name).
+						Uint("football_api_team_id", teams[i].ID).
+						Err(errTrx).
+						Msg("failed to save alias")
+					continue
+				}
+				numberOfSaved++
+			}
+
+			s.logger.Info().
+				Str("league_name", league.League.Name).
+				Str("country_name", league.Country.Name).
+				Int("number_of_saved", numberOfSaved).
+				Int("number_of_existed", numberOfExisted).
+				Msg("league teams saving finished")
+
+			defer wg.Done()
+		}(league, teams)
+	}
+
+	wg.Wait()
 }
 
 func isIncludedLeague(league LeagueData, includedLeagues []league) bool {

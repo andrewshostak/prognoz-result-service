@@ -11,6 +11,7 @@ import (
 
 type AliasRepository interface {
 	Find(ctx context.Context, alias string) (*repository.Alias, error)
+	SaveInTrx(ctx context.Context, alias string, footballAPITeamID uint) error
 }
 
 type MatchRepository interface {

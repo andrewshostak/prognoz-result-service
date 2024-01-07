@@ -253,6 +253,7 @@ To back-fill aliases data a separate command is created. The command description
 - graceful shutdown
 - ✓ replace `fmt.Printf` with good logger
 - make gin and zerolog friends
+- make gin and gorm friends
 - get two aliases on match creation endpoint concurrently
 - notify subscribers concurrently
 - create match and football api fixture in transaction

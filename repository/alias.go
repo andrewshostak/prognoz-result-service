@@ -30,3 +30,23 @@ func (r *AliasRepository) Find(ctx context.Context, alias string) (*Alias, error
 
 	return &a, nil
 }
+
+func (r *AliasRepository) SaveInTrx(ctx context.Context, alias string, footballAPITeamID uint) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		team := Team{}
+		if err := tx.Create(&team).Error; err != nil {
+			return fmt.Errorf("failed to create team: %w", err)
+		}
+
+		a := Alias{TeamID: team.ID, Alias: alias}
+		if err := tx.Create(&a).Error; err != nil {
+			return fmt.Errorf("failed to create alias: %w", err)
+		}
+
+		if err := tx.Create(&FootballApiTeam{ID: footballAPITeamID, TeamID: team.ID}).Error; err != nil {
+			return fmt.Errorf("failed to create football api team: %w", err)
+		}
+
+		return nil
+	})
+}
