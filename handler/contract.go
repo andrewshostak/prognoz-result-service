@@ -6,6 +6,10 @@ import (
 	"github.com/andrewshostak/result-service/service"
 )
 
+type AliasService interface {
+	Search(ctx context.Context, alias string) ([]string, error)
+}
+
 type MatchService interface {
 	Create(ctx context.Context, request service.CreateMatchRequest) (uint, error)
 }

@@ -50,3 +50,14 @@ func (r *AliasRepository) SaveInTrx(ctx context.Context, alias string, footballA
 		return nil
 	})
 }
+
+func (r *AliasRepository) Search(ctx context.Context, alias string) ([]Alias, error) {
+	var aliases []Alias
+	result := r.db.WithContext(ctx).Where("alias ILIKE ?", "%"+alias+"%").Limit(10).Find(&aliases)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return aliases, nil
+}

@@ -86,12 +86,15 @@ func startServer(_ *cobra.Command, _ []string) {
 	)
 	subscriptionService := service.NewSubscriptionService(subscriptionRepository, matchRepository, aliasRepository, taskScheduler, logger)
 	notifierService := service.NewNotifierService(subscriptionRepository, notifierClient, logger)
+	aliasService := service.NewAliasService(aliasRepository, logger)
 
 	matchHandler := handler.NewMatchHandler(matchService)
 	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
+	aliasHandler := handler.NewAliasHandler(aliasService)
 	v1.POST("/matches", matchHandler.Create)
 	v1.POST("/subscriptions", subscriptionHandler.Create)
 	v1.DELETE("/subscriptions", subscriptionHandler.Delete)
+	v1.GET("/aliases", aliasHandler.Search)
 
 	ctx := context.Background()
 	matchResultScheduleInitializer := initializer.NewMatchResultScheduleInitializer(matchService, logger)

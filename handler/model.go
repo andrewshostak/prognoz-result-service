@@ -26,6 +26,10 @@ type DeleteSubscriptionRequest struct {
 	SecretKey string    `form:"secret_key" binding:"required"`
 }
 
+type SearchAliasRequest struct {
+	Search string `form:"search" binding:"required"`
+}
+
 func (cmr *CreateMatchRequest) ToDomain() service.CreateMatchRequest {
 	return service.CreateMatchRequest{
 		StartsAt:  cmr.StartsAt,
