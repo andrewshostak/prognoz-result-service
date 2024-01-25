@@ -89,6 +89,7 @@ func (s *BackfillAliasesService) getLeaguesTeams(ctx context.Context, leagues []
 			s.logger.Info().
 				Str("league_name", league.League.Name).
 				Str("country_name", league.Country.Name).
+				Int("number_of_teams", len(result.Response)).
 				Msg("successfully get teams")
 
 			mutex.Lock()
@@ -101,7 +102,7 @@ func (s *BackfillAliasesService) getLeaguesTeams(ctx context.Context, leagues []
 
 	wg.Wait()
 
-	s.logger.Info().Int("number", len(teams)).Msg("received results")
+	s.logger.Info().Int("number_of_leagues", len(teams)).Msg("all teams received")
 
 	return teams, nil
 }
@@ -190,6 +191,8 @@ func (s *BackfillAliasesService) saveTeams(ctx context.Context, leaguesTeams map
 				}
 				numberOfSaved++
 			}
+
+			<-jobs
 
 			s.logger.Info().
 				Str("league_name", league.League.Name).
