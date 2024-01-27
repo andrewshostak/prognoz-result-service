@@ -11,7 +11,7 @@ type Alias struct {
 	TeamID uint   `gorm:"column:team_id"`
 	Alias  string `gorm:"column:alias;unique"`
 
-	FootballApiTeam *FootballApiTeam `gorm:"foreignKey:team_id"`
+	FootballApiTeam *FootballApiTeam `gorm:"foreignKey:TeamID;references:TeamID"`
 }
 
 type Team struct {
@@ -33,8 +33,8 @@ type Match struct {
 	ResultStatus ResultStatus `gorm:"column:result_status;default:not_scheduled"`
 
 	FootballApiFixtures []FootballApiFixture
-	HomeTeam            *Team `gorm:"foreignKey:home_team_id"`
-	AwayTeam            *Team `gorm:"foreignKey:away_team_id"`
+	HomeTeam            *Team `gorm:"foreignKey:HomeTeamID"`
+	AwayTeam            *Team `gorm:"foreignKey:AwayTeamID"`
 }
 
 type FootballApiFixture struct {
@@ -42,7 +42,7 @@ type FootballApiFixture struct {
 	MatchID uint         `gorm:"column:match_id"`
 	Data    pgtype.JSONB `gorm:"column:data"`
 
-	Match *Match `gorm:"foreignKey:match_id"`
+	Match *Match `gorm:"foreignKey:MatchID"`
 }
 
 type Subscription struct {
@@ -54,7 +54,7 @@ type Subscription struct {
 	Status     SubscriptionStatus `gorm:"column:status;default:pending"`
 	NotifiedAt *time.Time         `gorm:"column:notified_at"`
 
-	Match *Match `gorm:"foreignKey:match_id"`
+	Match *Match `gorm:"foreignKey:MatchID"`
 }
 
 type ResultStatus string
