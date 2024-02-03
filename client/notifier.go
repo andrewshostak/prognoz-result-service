@@ -38,6 +38,7 @@ func (c *NotifierClient) Notify(ctx context.Context, notification Notification) 
 	}
 
 	req.Header.Set(notificationAuthHeader, notification.Key)
+	req.Header.Set("Content-Type", "application/json")
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send request to notify subscribers: %w", err)
@@ -50,9 +51,9 @@ func (c *NotifierClient) Notify(ctx context.Context, notification Notification) 
 		}
 	}()
 
-	if res.StatusCode >= http.StatusOK {
+	if res.StatusCode >= http.StatusOK && res.StatusCode <= http.StatusNoContent {
 		return nil
 	}
 
-	return fmt.Errorf("%s: %w", fmt.Sprintf("failed to notify subscibers, status %d", res.StatusCode), errs.ErrUnexpectedNotifierStatusCode)
+	return fmt.Errorf("%s: %w", fmt.Sprintf("failed to notify subscribers, status %d", res.StatusCode), errs.ErrUnexpectedNotifierStatusCode)
 }

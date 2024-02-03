@@ -63,10 +63,11 @@ func (s *NotifierService) NotifySubscribers(ctx context.Context) error {
 		if toUpdate.Status == repository.SuccessfulSub {
 			now := time.Now()
 			toUpdate.NotifiedAt = &now
+			s.logger.Info().Str("url", subscriptions[i].Url).Msg("subscriber successfully notified")
 		}
 
 		errUpdate := s.subscriptionRepository.Update(ctx, subscriptions[i].ID, toUpdate)
-		if err != nil {
+		if errUpdate != nil {
 			return fmt.Errorf("failed to update subscription status to %s: %w", toUpdate.Status, errUpdate)
 		}
 	}
