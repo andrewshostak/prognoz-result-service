@@ -97,6 +97,8 @@ func (s *SubscriptionService) Delete(ctx context.Context, request DeleteSubscrip
 		return fmt.Errorf("failed to delete subscription: %w", err)
 	}
 
+	s.logger.Info().Uint("subscription_id", subscription.ID).Msg("subscription deleted")
+
 	otherSubscriptions, errList := s.subscriptionRepository.List(ctx, match.ID)
 	if errList != nil {
 		s.logger.Error().Err(err).Uint("match_id", match.ID).Msg("failed to check other subscriptions presence")
@@ -113,6 +115,8 @@ func (s *SubscriptionService) Delete(ctx context.Context, request DeleteSubscrip
 		s.logger.Error().Err(errDelete).Uint("match_id", match.ID).Msg("failed to delete match")
 		return nil
 	}
+
+	s.logger.Info().Uint("match_id", match.ID).Msg("match deleted")
 
 	if len(match.FootballApiFixtures) < 1 {
 		s.logger.Error().Uint("match_id", match.ID).Msg("failed to cancel scheduled task: match relation football api fixtures is not found")
