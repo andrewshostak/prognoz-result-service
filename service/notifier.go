@@ -49,8 +49,8 @@ func (s *NotifierService) NotifySubscribers(ctx context.Context) error {
 		notification := client.Notification{
 			Url:  mapped[i].Url,
 			Key:  mapped[i].Key,
-			Home: mapped[0].Match.FootballApiFixtures[0].Home,
-			Away: mapped[0].Match.FootballApiFixtures[0].Away,
+			Home: mapped[i].Match.FootballApiFixtures[0].Home,
+			Away: mapped[i].Match.FootballApiFixtures[0].Away,
 		}
 
 		toUpdate := repository.Subscription{Status: repository.SuccessfulSub}

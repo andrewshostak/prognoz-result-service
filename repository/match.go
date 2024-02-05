@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/andrewshostak/result-service/errs"
 	"gorm.io/gorm"
@@ -58,10 +59,27 @@ func (r *MatchRepository) List(ctx context.Context, resultStatus ResultStatus) (
 func (r *MatchRepository) One(ctx context.Context, search Match) (*Match, error) {
 	var match Match
 
-	result := r.db.WithContext(ctx).
-		Preload("FootballApiFixtures").
-		Where(&Match{ID: search.ID, StartsAt: search.StartsAt, HomeTeamID: search.HomeTeamID, AwayTeamID: search.AwayTeamID}).
-		First(&match)
+	query := r.db.WithContext(ctx).
+		Preload("FootballApiFixtures")
+
+	if search.ID != 0 {
+		query = query.Where(&Match{ID: search.ID})
+	}
+
+	if search.HomeTeamID != 0 {
+		query = query.Where(&Match{HomeTeamID: search.HomeTeamID})
+	}
+
+	if search.AwayTeamID != 0 {
+		query = query.Where(&Match{AwayTeamID: search.AwayTeamID})
+	}
+
+	if !search.StartsAt.IsZero() {
+		query = query.Where("starts_at >= ?::date", search.StartsAt.Format(time.DateOnly)).
+			Where("starts_at < (?::date + '1 day'::interval)", search.StartsAt.Format(time.DateOnly))
+	}
+
+	result := query.First(&match)
 
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
