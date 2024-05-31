@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
 
 	"github.com/andrewshostak/result-service/client"
 	"github.com/andrewshostak/result-service/config"
@@ -37,21 +35,7 @@ func main() {
 func startServer(_ *cobra.Command, _ []string) {
 	cfg := config.Parse()
 
-	file, err := loggerinternal.GetLogFile()
-	if err != nil {
-		panic(err)
-	}
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, os.Kill)
-
-	go func() {
-		<-c
-		_ = file.Close()
-		os.Exit(0)
-	}()
-
-	logger := loggerinternal.SetupLogger(file)
+	logger := loggerinternal.SetupLogger()
 
 	r := gin.Default()
 
