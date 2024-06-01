@@ -81,7 +81,7 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 		Msg("match is not found in the database. making an attempt to find it in external api")
 
 	date := request.StartsAt.UTC().Format(dateFormat)
-	season := uint(s.getSeason())
+	season := uint(s.getSeason(request.StartsAt.UTC()))
 	response, err := s.footballAPIClient.SearchFixtures(ctx, client.FixtureSearch{
 		Season:   &season,
 		Timezone: time.UTC.String(),
@@ -197,7 +197,6 @@ func (s *MatchService) ScheduleMatchResultAcquiring(match Match) error {
 		fixture:   match.FootballApiFixtures[0],
 		aliasHome: match.HomeTeam.Aliases[0],
 		aliasAway: match.AwayTeam.Aliases[0],
-		season:    uint(s.getSeason()),
 	}
 	return s.scheduleMatchResultAcquiring(params)
 }
@@ -251,17 +250,15 @@ func (s *MatchService) scheduleMatchResultAcquiring(params matchResultTaskParams
 	return nil
 }
 
-// getSeason returns current year if current time is after June 1, otherwise previous year
-func (s *MatchService) getSeason() int {
-	now := time.Now()
+// getSeason returns current year if current time is after June 3, otherwise previous year
+func (s *MatchService) getSeason(startsAt time.Time) int {
+	seasonBound := time.Date(startsAt.Year(), 6, 3, 0, 0, 0, 0, time.UTC)
 
-	seasonBound := time.Date(now.Year(), 6, 1, 0, 0, 0, 0, time.UTC)
-
-	if now.After(seasonBound) {
-		return now.Year()
+	if startsAt.After(seasonBound) {
+		return startsAt.Year()
 	}
 
-	return now.AddDate(-1, 0, 0).Year()
+	return startsAt.AddDate(-1, 0, 0).Year()
 }
 
 func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search client.FixtureSearch, matchDetails matchLogFields) func(c context.Context) {
