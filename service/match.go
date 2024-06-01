@@ -83,7 +83,7 @@ func (s *MatchService) Create(ctx context.Context, request CreateMatchRequest) (
 	date := request.StartsAt.UTC().Format(dateFormat)
 	season := uint(s.getSeason())
 	response, err := s.footballAPIClient.SearchFixtures(ctx, client.FixtureSearch{
-		Season:   season,
+		Season:   &season,
 		Timezone: time.UTC.String(),
 		Date:     &date,
 		TeamID:   &aliasHome.FootballApiTeam.ID,
@@ -238,7 +238,7 @@ func (s *MatchService) scheduleMatchResultAcquiring(params matchResultTaskParams
 
 	i := 1
 	ch := make(chan resultTaskChan)
-	search := client.FixtureSearch{Season: params.season, Timezone: time.UTC.String(), ID: &params.fixture.ID}
+	search := client.FixtureSearch{Timezone: time.UTC.String(), ID: &params.fixture.ID}
 
 	key := getTaskKey(params.match.ID, params.fixture.ID)
 	err := s.taskScheduler.Schedule(key, s.getTaskFunc(i, ch, search, fields), s.pollingInterval, params.match.StartsAt.Add(s.pollingFirstAttemptDelay))

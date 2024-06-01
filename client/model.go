@@ -69,7 +69,7 @@ type Country struct {
 }
 
 type FixtureSearch struct {
-	Season   uint
+	Season   *uint
 	Timezone string
 	Date     *string
 	TeamID   *uint

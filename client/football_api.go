@@ -37,8 +37,11 @@ func (c *FootballAPIClient) SearchFixtures(ctx context.Context, search FixtureSe
 	}
 
 	q := req.URL.Query()
-	q.Add("season", strconv.Itoa(int(search.Season)))
 	q.Add("timezone", search.Timezone)
+
+	if search.Season != nil {
+		q.Add("season", strconv.Itoa(int(*search.Season)))
+	}
 
 	if search.TeamID != nil {
 		q.Add("team", strconv.Itoa(int(*search.TeamID)))
