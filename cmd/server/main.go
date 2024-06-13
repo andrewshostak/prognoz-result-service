@@ -43,6 +43,10 @@ func startServer(_ *cobra.Command, _ []string) {
 	httpClient := http.Client{}
 	chronoTaskScheduler := chrono.NewDefaultTaskScheduler()
 
+	r.GET("/_ah/start", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
 	r.Use(middleware.Authorization(cfg.App.HashedAPIKeys, cfg.App.SecretKey))
 
 	v1 := r.Group("/v1")

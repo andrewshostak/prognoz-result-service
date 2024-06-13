@@ -72,7 +72,7 @@ func (s *BackfillAliasesService) getLeaguesTeams(ctx context.Context, leagues []
 			Int("number", i).
 			Str("league_name", leagues[i].League.Name).
 			Str("country_name", leagues[i].Country.Name).
-			Msg("iteration")
+			Msg("iterating leagues")
 
 		go func(ctx context.Context, league LeagueData) {
 			result, err := s.footballAPIClient.SearchTeams(ctx, client.TeamsSearch{Season: season, League: league.League.ID})

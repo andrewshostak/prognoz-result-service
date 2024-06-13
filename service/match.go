@@ -233,7 +233,7 @@ func (s *MatchService) scheduleMatchResultAcquiring(params matchResultTaskParams
 		startsAt:  params.match.StartsAt,
 	}
 
-	enrichLogWithMatchDetails(s.logger.Info(), fields).Msg("scheduling a task")
+	enrichLogWithMatchDetails(s.logger.Info(), fields).Msg("scheduling a task to acquire match result")
 
 	i := 1
 	ch := make(chan resultTaskChan)
@@ -263,7 +263,7 @@ func (s *MatchService) getSeason(startsAt time.Time) int {
 
 func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search client.FixtureSearch, matchDetails matchLogFields) func(c context.Context) {
 	return func(c context.Context) {
-		enrichLogWithMatchDetails(s.logger.Info(), matchDetails).Msg(fmt.Sprintf("iteration %d", i))
+		enrichLogWithMatchDetails(s.logger.Info(), matchDetails).Msg(fmt.Sprintf("making an attempt %d to get match result", i))
 
 		response, err := s.footballAPIClient.SearchFixtures(c, search)
 		if err != nil {
@@ -302,7 +302,7 @@ func (s *MatchService) getTaskFunc(i int, ch chan<- resultTaskChan, search clien
 		enrichLogWithMatchDetails(s.logger.Info(), matchDetails).
 			Uint("home", fixture.Goals.Home).
 			Uint("away", fixture.Goals.Away).
-			Msg("match result received. cancelling the task")
+			Msg("match result received successfully. cancelling the task")
 		ch <- resultTaskChan{fixture: &fixture}
 		close(ch)
 	}

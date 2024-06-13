@@ -43,7 +43,7 @@ func (s *NotifierService) NotifySubscribers(ctx context.Context) error {
 		return errors.New(fmt.Sprintf("football api fixtures of the match with id %d is not found", mapped[0].MatchID))
 	}
 
-	s.logger.Info().Msg(fmt.Sprintf("number of found subscriptions to notify: %d", len(mapped)))
+	s.logger.Info().Msg(fmt.Sprintf("found %d subscription(s) to notify", len(mapped)))
 
 	for i := range subscriptions {
 		notification := client.Notification{
@@ -56,14 +56,20 @@ func (s *NotifierService) NotifySubscribers(ctx context.Context) error {
 		toUpdate := repository.Subscription{Status: repository.SuccessfulSub}
 		err := s.notifierClient.Notify(ctx, notification)
 		if err != nil {
-			s.logger.Error().Err(err).Str("url", subscriptions[i].Url).Msg("failed to notify subscriber")
+			s.logger.Error().Err(err).
+				Str("url", subscriptions[i].Url).
+				Uint("match_id", subscriptions[i].MatchID).
+				Msg("failed to notify subscriber")
 			toUpdate.Status = repository.ErrorSub
 		}
 
 		if toUpdate.Status == repository.SuccessfulSub {
 			now := time.Now()
 			toUpdate.NotifiedAt = &now
-			s.logger.Info().Str("url", subscriptions[i].Url).Msg("subscriber successfully notified")
+			s.logger.Info().
+				Str("url", subscriptions[i].Url).
+				Uint("match_id", subscriptions[i].MatchID).
+				Msg("subscriber successfully notified")
 		}
 
 		errUpdate := s.subscriptionRepository.Update(ctx, subscriptions[i].ID, toUpdate)

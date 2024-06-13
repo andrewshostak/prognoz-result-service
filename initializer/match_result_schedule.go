@@ -25,7 +25,7 @@ func (i *MatchResultScheduleInitializer) ReSchedule(ctx context.Context) error {
 		return fmt.Errorf("failed to get matches: %w", err)
 	}
 
-	i.logger.Info().Msg(fmt.Sprintf("number of found matches to re-schedule: %d", len(matches)))
+	i.logger.Info().Msg(fmt.Sprintf("found %d match(es) to re-schedule", len(matches)))
 
 	for j := range matches {
 		if errScheduling := i.matchService.ScheduleMatchResultAcquiring(matches[j]); errScheduling != nil {

@@ -48,6 +48,9 @@ func EstablishDatabaseConnection(cfg config.Config) *gorm.DB {
 		panic(err)
 	}
 
+	// free version of elephantsql has connections limit
+	sqlDb.SetMaxOpenConns(2)
+
 	driver, err := migratepg.WithInstance(sqlDb, &migratepg.Config{})
 	m, err := migrate.NewWithDatabaseInstance("file://./migrations", cfg.PG.Database, driver)
 	if err != nil {

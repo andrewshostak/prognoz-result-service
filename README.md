@@ -207,19 +207,6 @@ API-->>WebApp: Returns success
 Deactivate API
 ```
 
-### Update match
-
-#### Update match teams
-
-TODO
-
-#### Update match time
-
-##### Time update to the same date
-##### Time update to another date
-
-TODO
-
 ### Authorization
 
 `prognoz-api` => `result-service`
@@ -238,7 +225,7 @@ TODO
 ### Back-fill aliases data
 
 To back-fill aliases data a separate command is created. The command description:
-- Gets current season
+- Accepts season as a parameter
 - Command has predefined list of league and country names (for example: Premier League - Ukraine, La Liga - Spain, etc.)
 - Calls `football-api`s `leagues` endpoint with `season` param
 - Extracts appropriate league ids from the response of `league` endpoint
@@ -246,33 +233,3 @@ To back-fill aliases data a separate command is created. The command description
 - For each team the command does the next actions in database 
   - checks if `alias` already exists
   - if not, creates a `team`, `alias`, `football_api_team` in transaction
-
-### List of improvements
-- ✓ move durations to env vars
-- fix concurrent map reads/writes
-- graceful shutdown
-- ✓ replace `fmt.Printf` with good logger
-- make gin and zerolog friends
-- make gin and gorm friends
-- get two aliases on match creation endpoint concurrently
-- notify subscribers concurrently
-- create match and football api fixture in transaction
-- fix broken gorm errors checks
-- update football api fixture and match in transaction
-- add response bodies from API calls to error messages
-- configure ci
-- add unit tests for services: 
-  - match
-    - Create
-    - ✓ List
-    - ScheduleMatchResultAcquiring
-    - Update
-  - notifier
-    - NotifySubscribers
-  - subscription
-    - Create
-    - Delete
-- add linter
-- upgrade go version to 1.21
-- use generics for football api client responses
-
