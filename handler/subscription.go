@@ -26,7 +26,7 @@ func (h *SubscriptionHandler) Create(c *gin.Context) {
 
 	err := h.subscriptionService.Create(c.Request.Context(), params.ToDomain())
 	if errors.As(err, &errs.SubscriptionAlreadyExistsError{}) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.Status(http.StatusNoContent)
 
 		return
 	}
